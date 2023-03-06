@@ -16,7 +16,6 @@ private:
     char **dest_ips;
     char *bpf_buffer; 
     const int pairs_size;
-    int curr_pair;
     int buffer_length;
     int timeout_counter;
 public:
@@ -25,9 +24,8 @@ public:
     virtual ~ARPHandler();
     virtual int HandleRead();    
     virtual int HandleError();
-    virtual int HandleWrite();//make it public and send request if you have 
+    virtual int HandleWrite();
     virtual int HandleTimeout();
-    void Run();
     const DARP::arp_pair *GetPairs() const{return pairs;}
 };
 #endif

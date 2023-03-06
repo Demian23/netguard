@@ -3,7 +3,7 @@
 ARPHandler::ARPHandler(sockaddr_in a_ip, ether_addr a_mac, char **ips, 
     const int len, const char *a_interface, EventSelector &a_sel)
     : FdHandler(-1, true), sel(a_sel), ip(a_ip), mac(a_mac), interface(a_interface), 
-    dest_ips(ips), pairs_size(len), curr_pair(0), timeout_counter(0)
+    dest_ips(ips), pairs_size(len), timeout_counter(0)
 {
     DARP::set_bpf_arp(fd, buffer_length, interface);
     DARP::set_timeout(fd);
@@ -19,6 +19,7 @@ ARPHandler::~ARPHandler()
 
 int ARPHandler::HandleRead()
 {
+    /*
     if(curr_pair < pairs_size){
         if(DARP::collectresponse(fd, pairs[curr_pair], bpf_buffer, buffer_length)){
             curr_pair++;
@@ -27,6 +28,7 @@ int ARPHandler::HandleRead()
     } else {
         sel.EndRun();
     }
+    */
     return 0;
 }
 
@@ -46,25 +48,19 @@ int ARPHandler::HandleError()
 
 int ARPHandler::HandleTimeout()
 {
-    Run();
-    return 0;
-}
-
-void ARPHandler::Run()
-{
     for(int i = 0; i < pairs_size; i++){
-        DARP::writequery(fd, &mac, &ip,dest_ips[i]);
-        for(;timeout_counter < 5;)
-        if(curr_pair < pairs_size){
-            if(DARP::collectresponse(fd, pairs[curr_pair], bpf_buffer, buffer_length)){
-                curr_pair++;
-                timeout_counter = 0;
-            } else {
+        timeout_counter = 0;
+        while(timeout_counter < 5){
+            DARP::writequery(fd, &mac, &ip, dest_ips[i]);
+            bool endflag= DARP::collectresponse(fd, pairs[i], bpf_buffer, buffer_length);
+            char *ip_str = inet_ntoa(pairs[0].ip.sin_addr);
+            endflag &= strcmp(dest_ips[i], ip_str) == 0;
+            if(endflag)
+                break;
+            else
                 timeout_counter++;
-            }
-        } else {
-            break;
         }
     }
     sel.EndRun();
+    return 0;
 }
