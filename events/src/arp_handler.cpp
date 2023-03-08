@@ -53,7 +53,8 @@ int ARPHandler::HandleTimeout()
         while(timeout_counter < 5){
             DARP::writequery(fd, &mac, &ip, dest_ips[i]);
             bool endflag= DARP::collectresponse(fd, pairs[i], bpf_buffer, buffer_length);
-            char *ip_str = inet_ntoa(pairs[0].ip.sin_addr);
+            pairs[i].ip.sin_family = AF_INET;
+            char *ip_str = inet_ntoa(pairs[i].ip.sin_addr);
             endflag &= strcmp(dest_ips[i], ip_str) == 0;
             if(endflag)
                 break;

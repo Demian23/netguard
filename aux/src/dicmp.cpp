@@ -104,7 +104,7 @@ bool DICMP::process_reply(int sockfd, char *ptr, ssize_t len, int id)
     if(icmp->icmp_type == ICMP_ECHOREPLY){
         if(icmp->icmp_id != id){
 //            sendmsg(sockfd, (struct msghdr *)ptr, 0);
-            DERR::Msg("wrong id. actual: %d  expected: %d, DICMP::process_reply", icmp->icmp_id, id);
+            //DERR::Msg("wrong id. actual: %d  expected: %d, DICMP::process_reply", icmp->icmp_id, id);
             return false;
         }
         return true;

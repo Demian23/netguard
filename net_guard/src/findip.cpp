@@ -44,7 +44,7 @@ static void *thread_proc(void *data)
     int sget = 0, ssend = 0;
     char **ip_array = DIP::all_net_ipv4(thr_data->net, thr_data->interval_start, 
         thr_data->interval_size);
-    for(int i = 0; ip_array[i]; i++){
+    for(int i = 0; i < thr_data->interval_size; i++){
         if(!DICMP::make_icmp_socket(ssend) || !DICMP::make_icmp_socket(sget))
             DERR::Quit("Socket creation mistake");
         SendICMPHandler *send = new SendICMPHandler(ssend, true, ip_array[i], ev, 

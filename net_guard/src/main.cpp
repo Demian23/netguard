@@ -7,25 +7,25 @@
 #include "../../aux/src/dmac.hpp"
 #include "findip.hpp"
 
-
+void print_vendor_info(const ether_addr *mac)
+{
+    DMAC::mac_vendor *vendor = DMAC::vendors_arr(mac, 1);
+    if(vendor->find)
+        printf("Vendor name: %s\nPrivate: %s\nBlock type: %s\nLast update: %s\n", 
+            vendor->info[0],vendor->info[1], vendor->info[2], vendor->info[3]);
+    putchar('\n');
+    delete[] vendor;
+}
 void print_info(const sockaddr_in *ip, const ether_addr *mac)
 {
     char *ip_s = inet_ntoa(ip->sin_addr);
-    struct hostent *hp;     
-    hp = gethostbyaddr((void*)&ip->sin_addr, sizeof(struct in_addr), AF_INET); 
-    DMAC::mac_vendor *vendor = DMAC::vendors_arr(mac, 1);
-    /*
-     * not working
-    if(!getaddrinfo(ip_s, NULL, &hints, &info))
-        name = info->ai_canonname;
-    else
-        name = "";
-*/
-    printf("%16s\t%16s\t%40s\t%02x:%02x:%02x:%02x:%02x:%02x\n",
-            ip_s, hp == NULL ? "none" : hp->h_name, vendor->find ? vendor->vendor : "none",
-            mac->octet[0], mac->octet[1], mac->octet[2], 
+    char hostname[NI_MAXHOST] = {};
+    getnameinfo(reinterpret_cast<const sockaddr *>(ip), sizeof(sockaddr_in), hostname, NI_MAXHOST, 0, 0, 0);
+    printf("Device name: %s\n", hostname);
+    printf("IP: %16s\tMAC: %02x:%02x:%02x:%02x:%02x:%02x\n",
+            ip_s, mac->octet[0], mac->octet[1], mac->octet[2], 
             mac->octet[3], mac->octet[4], mac->octet[5]);
-    delete[] vendor;
+    print_vendor_info(mac);
 }
 
 void get_cmdl_args(int argc, char **argv, ether_addr &ownmac, sockaddr_in &ip,
@@ -48,8 +48,9 @@ void get_cmdl_args(int argc, char **argv, ether_addr &ownmac, sockaddr_in &ip,
     }
     if(argc == 3){
         int new_mask_prefix = atoi(argv[2]);
-        if(new_mask_prefix < mask_prefix)
-            DERR::Quit("Your mask_prefix too big for this net(%d)", mask_prefix);
+        if((new_mask_prefix < mask_prefix) || (new_mask_prefix > 32))
+            DERR::Quit("Your mask_prefix is wrong for this net with mask %d", mask_prefix);
+        mask_prefix = new_mask_prefix;
     }
     if(mask_prefix == 0)
         DERR::Quit("Wrong input, mask must be in prefix form");

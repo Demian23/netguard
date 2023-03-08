@@ -63,6 +63,7 @@ bool DNET::findownaddr(const char *interface, struct ether_addr *ownmac,
                 } else {
                     if(sdl->sdl_family == AF_INET){
                         saip->sin_addr.s_addr = ((struct sockaddr_in *)temp->ifa_addr)->sin_addr.s_addr;
+                        saip->sin_family = AF_INET;
                         samask->sin_addr.s_addr = ((struct sockaddr_in *)temp->ifa_netmask)->sin_addr.s_addr;
                         success[1] = true;
                     }
