@@ -2,9 +2,9 @@
 
 #include <pthread.h>
 #include <stdint.h>
-#include "../../aux/src/dneterr.hpp"
-#include "../../events/src/socket_handlers.hpp"
-#include "../../aux/src/dip.hpp"
+#include "../../../aux/src/dneterr.hpp"
+#include "../../../events/src/socket_handlers.hpp"
+#include "../../../aux/src/dip.hpp"
 
 enum findip_params{default_timeout = 200, too_much = 30, default_threads = 4};
 struct thread_data{

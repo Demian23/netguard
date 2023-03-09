@@ -1,3 +1,4 @@
+#include <tgbot/tgbot.h>
 #include <cstdio>
 #include <cstdlib>
 #include "../../aux/src/dneterr.hpp"
@@ -5,27 +6,27 @@
 #include "../../aux/src/dip.hpp"
 #include "../../aux/src/darp.hpp"
 #include "../../aux/src/dmac.hpp"
-#include "modules/findip.hpp"
+#include "../../net_guard/src/modules/findip.hpp"
 
-void print_vendor_info(const ether_addr *mac)
+void print_vendor_info(const ether_addr *mac, char *dest, int &i)
 {
     DMAC::mac_vendor *vendor = DMAC::vendors_arr(mac, 1);
     if(vendor->find)
-        printf("Vendor name: %s\nPrivate: %s\nBlock type: %s\nLast update: %s\n", 
+        i+=sprintf(dest + i, "Vendor name: %s\nPrivate: %s\nBlock type: %s\nLast update: %s\n", 
             vendor->info[0],vendor->info[1], vendor->info[2], vendor->info[3]);
     delete[] vendor;
 }
-void print_info(const sockaddr_in *ip, const ether_addr *mac)
+void print_info(const sockaddr_in *ip, const ether_addr *mac, char *dest, int &i)
 {
     char *ip_s = inet_ntoa(ip->sin_addr);
     char hostname[NI_MAXHOST] = {};
     getnameinfo(reinterpret_cast<const sockaddr *>(ip), sizeof(sockaddr_in), hostname, NI_MAXHOST, 0, 0, 0);
-    printf("Device name: %s\n", hostname);
-    printf("IP: %s\tMAC: %02x:%02x:%02x:%02x:%02x:%02x\n",
+    i+=sprintf(dest + i, "Device name: %s\n", hostname);
+    i+=sprintf(dest + i, "IP: %s\tMAC: %02x:%02x:%02x:%02x:%02x:%02x\n",
             ip_s, mac->octet[0], mac->octet[1], mac->octet[2], 
             mac->octet[3], mac->octet[4], mac->octet[5]);
-    print_vendor_info(mac);
-    putchar('\n');
+    print_vendor_info(mac, dest, i);
+    i+=sprintf(dest + i,"\n"); 
 }
 
 void get_cmdl_args(int argc, char **argv, ether_addr &ownmac, sockaddr_in &ip,
@@ -64,8 +65,10 @@ bool skip_own_ip(const sockaddr_in &ip, const char *dest_ip)
     return strcmp(ip_s, dest_ip) == 0;
 }
 
-int main(int argc, char **argv)
+char *get_netinfo(int argc, char **argv)
 {
+    char *dest = new char[4096];
+    int index = 0;
     short mask_prefix = 0;
     char *net = 0;
     int len;
@@ -73,7 +76,7 @@ int main(int argc, char **argv)
     struct sockaddr_in ip, mask;
     get_cmdl_args(argc, argv, ownmac, ip, mask, mask_prefix, net);
     char **arp_ips = get_real_ip(net, mask_prefix, len);
-    print_info(&ip, &ownmac);
+    print_info(&ip, &ownmac, dest, index);
     EventSelector ev;
     for(int i = 0; i < len; i++){
         if(skip_own_ip(ip, arp_ips[i]))
@@ -84,8 +87,43 @@ int main(int argc, char **argv)
         ev.Add(arp_h);
         ev.Run(1);
         const DARP::arp_pair *p = arp_h->GetPairs();
-        print_info(&(p->ip), &(p->mac));
+        print_info(&(p->ip), &(p->mac), dest, index);
         arp_h->ExplicitlyEnd();
     }
+    return dest;
+}
+
+char *get_botid()
+{
+    char *bot_id = new char[256];
+    memset(bot_id, 0, 256);
+    FILE *bot_file = fopen("net_bot/src/bot_file", "r");
+    fgets(bot_id, 256, bot_file); 
+    fclose(bot_file);
+    int size = strlen(bot_id);
+    bot_id[size -1] = 0;
+    return bot_id;
+}
+
+int main(int argc, char **argv) 
+{
+    char *id = get_botid();
+    TgBot::Bot bot(id);
+    bot.getEvents().onCommand("show", [&bot, &argc, &argv](TgBot::Message::Ptr message) {
+        printf("Net scan request\n");
+        char *info = get_netinfo(argc, argv);
+        bot.getApi().sendMessage(message->chat->id, info);
+        delete[] info;
+    });
+    try {
+        TgBot::TgLongPoll longPoll(bot);
+        while (true) {
+            printf("Long poll started\n");
+            longPoll.start();
+        }
+    } catch (TgBot::TgException& e) {
+        printf("error: %s\n", e.what());
+    }
+    delete[] id;
     return 0;
 }

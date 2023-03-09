@@ -3,3 +3,4 @@ bin/
 *.o
 .DS_Store
 *.dSYM
+net_bot/src/bot_file
