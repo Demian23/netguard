@@ -50,9 +50,10 @@ int ARPHandler::HandleTimeout()
 {
     for(int i = 0; i < pairs_size; i++){
         timeout_counter = 0;
+        bool endflag;
         while(timeout_counter < 5){
             DARP::writequery(fd, &mac, &ip, dest_ips[i]);
-            bool endflag= DARP::collectresponse(fd, pairs[i], bpf_buffer, buffer_length);
+            endflag= DARP::collectresponse(fd, pairs[i], bpf_buffer, buffer_length);
             pairs[i].ip.sin_family = AF_INET;
             char *ip_str = inet_ntoa(pairs[i].ip.sin_addr);
             endflag &= strcmp(dest_ips[i], ip_str) == 0;
@@ -60,6 +61,9 @@ int ARPHandler::HandleTimeout()
                 break;
             else
                 timeout_counter++;
+        }
+        if(!endflag && timeout_counter >= 5){
+            inet_aton(dest_ips[i], &(pairs[i].ip.sin_addr));
         }
     }
     sel.EndRun();

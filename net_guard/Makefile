@@ -3,6 +3,7 @@ CPPFLAGS= -Wall -g
 SRC=src/modules
 OBJ_AUX=../aux/obj
 OBJ_EVENT=../events/obj
+OBJ_AUTH=../authentication/obj
 OBJ_BOT=../net_bot/obj
 OBJ=obj/
 OBJS=$(patsubst $(SRC)/%.cpp, $(OBJ)/%.o, $(SRCS))
@@ -10,6 +11,7 @@ SRCS=$(wildcard $(SRC)/*.cpp)
 OBJS_AUX=$(wildcard $(OBJ_AUX)/*.o)
 OBJS_EVENT=$(wildcard $(OBJ_EVENT)/*.o)
 OBJS_BOT=$(wildcard $(OBJ_BOT)/*.o)
+OBJS_AUTH=$(wildcard $(OBJ_AUTH)/*.o)
 
 BINDIR=bin
 BIN=$(BINDIR)/net_guard
@@ -38,9 +40,7 @@ $(BIN_BOT): $(OBJS_BOT) $(OBJS_AUX) $(OBJS_EVENT) $(OBJS)
 	$(CPPC) $(CPPFLAGS_BOT) $^ -o $@ -I$(AUX_INCLUDE) -L$(LIB_BOOST) -L$(LIB_SSL) 
 
 
-
-
-$(BIN): $(OBJS_AUX) $(OBJS_EVENT) $(OBJS)
+$(BIN): $(OBJS_AUX) $(OBJS_EVENT) $(OBJS_AUTH) $(OBJS)
 	$(CPPC) $(CPPFLAGS) $^ src/main.cpp -o $@
 
 $(BINDIR):
@@ -51,7 +51,6 @@ $(OBJ):
 
 $(OBJ)/%.o: $(SRC)/%.cpp
 	$(CPPC) $(CPPFLAGS) -c $< -o $@ 
-
 
 clean:
 	$(RM) $(OBJ)/* $(BIN) $(BIN_BOT)

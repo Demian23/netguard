@@ -5,6 +5,7 @@
 #include "../../aux/src/dip.hpp"
 #include "../../aux/src/darp.hpp"
 #include "../../aux/src/dmac.hpp"
+#include "../../authentication/src/license.hpp"
 #include "modules/findip.hpp"
 
 void print_vendor_info(const ether_addr *mac)
@@ -21,7 +22,7 @@ void print_info(const sockaddr_in *ip, const ether_addr *mac)
     char hostname[NI_MAXHOST] = {};
     getnameinfo(reinterpret_cast<const sockaddr *>(ip), sizeof(sockaddr_in), hostname, NI_MAXHOST, 0, 0, 0);
     printf("Device name: %s\n", hostname);
-    printf("IP: %s\tMAC: %02x:%02x:%02x:%02x:%02x:%02x\n",
+    printf("IP: %s\nMAC: %02x:%02x:%02x:%02x:%02x:%02x\n",
             ip_s, mac->octet[0], mac->octet[1], mac->octet[2], 
             mac->octet[3], mac->octet[4], mac->octet[5]);
     print_vendor_info(mac);
@@ -71,6 +72,10 @@ int main(int argc, char **argv)
     int len;
     struct ether_addr ownmac;
     struct sockaddr_in ip, mask;
+    if(License::is_valid_device(argv[1]))
+        printf("Successful authentication\n\n");
+    else
+        DERR::Quit("Unsuccessful authentication");
     get_cmdl_args(argc, argv, ownmac, ip, mask, mask_prefix, net);
     char **arp_ips = get_real_ip(net, mask_prefix, len);
     print_info(&ip, &ownmac);
