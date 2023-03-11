@@ -93,6 +93,17 @@ char* DIP::number_to_ipv4(const uint32_t number)
 
 }
 
+DIP::DevType DIP::devtype_from_vendor(const char *vendor)
+{
+    const char *cp_vendors[] = {"TP-LINK TECHNOLOGIES CO.,LTD."};
+    for(int i = 0; i < 1; i++){
+        if(strlen(cp_vendors[i]) == strlen(vendor))
+            if(strcmp(cp_vendors[i], vendor) == 0)
+                return customer_premise;
+    }
+    return endpoint;
+}
+
 static void reverse(char s[])
 {
 	int i, j;

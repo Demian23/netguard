@@ -11,9 +11,16 @@
 void print_vendor_info(const ether_addr *mac)
 {
     DMAC::mac_vendor *vendor = DMAC::vendors_arr(mac, 1);
-    if(vendor->find)
+    int type = DIP::endpoint;
+    if(vendor->find){
         printf("Vendor name: %s\nPrivate: %s\nBlock type: %s\nLast update: %s\n", 
             vendor->info[0],vendor->info[1], vendor->info[2], vendor->info[3]);
+        type = DIP::devtype_from_vendor(vendor->info[0]);
+    }
+    if(type == DIP::endpoint)
+        printf("Device type: endpoint\n");
+    else
+        printf("Device type: customer premise equipment\n");
     delete[] vendor;
 }
 void print_info(const sockaddr_in *ip, const ether_addr *mac)

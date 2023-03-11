@@ -32,9 +32,9 @@ release:$(OBJ)
 release:$(BINDIR)
 release:$(BIN)
 
-bot:$(BINDIR)
-bot:$(OBJ)
-bot:$(BIN_BOT)
+net_bot:$(BINDIR)
+net_bot:$(OBJ)
+net_bot:$(BIN_BOT)
 
 $(BIN_BOT): $(OBJS_BOT) $(OBJS_AUX) $(OBJS_EVENT) $(OBJS)
 	$(CPPC) $(CPPFLAGS_BOT) $^ -o $@ -I$(AUX_INCLUDE) -L$(LIB_BOOST) -L$(LIB_SSL) 

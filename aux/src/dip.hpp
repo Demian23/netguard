@@ -2,6 +2,7 @@
 #define DIP_DEF
 #include <stdint.h>
 namespace DIP{
+    enum DevType{endpoint, customer_premise};
     uint32_t ipv4_to_number(const char *ip);
     char *number_to_ipv4(const uint32_t number);
 
@@ -12,5 +13,7 @@ namespace DIP{
     uint32_t ip_amount(const short mask_prefix);
     uint32_t mask_number(const short mask_prefix);
     short mask_prefix(const char *mask);
+
+    DevType devtype_from_vendor(const char *vendor); 
 };
 #endif
