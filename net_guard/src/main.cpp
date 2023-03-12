@@ -36,12 +36,17 @@ void print_info(const sockaddr_in *ip, const ether_addr *mac)
     putchar('\n');
 }
 
-void get_cmdl_args(int argc, char **argv, ether_addr &ownmac, sockaddr_in &ip,
+void get_cmdl_args(int argc, char **argv, char *&interface, ether_addr &ownmac, sockaddr_in &ip,
     sockaddr_in &mask, short &mask_prefix, char *&net)
 {
     char ip_s[32] = {};
-    if(argc > 1 && argc < 4){
-        if(DNET::findownaddr(argv[1], &ownmac, &ip, &mask)){
+    if(argc < 4){
+        if(argv[1] != 0){
+            int size = strlen(argv[1]);
+            interface = new char[size + 1];
+            strcpy(interface, argv[1]);
+        }
+        if(DNET::findownaddr(interface, &ownmac, &ip, &mask)){
             char *temp = 0;
             temp = inet_ntoa(ip.sin_addr);
             memcpy(ip_s, temp, strlen(temp));
@@ -52,7 +57,7 @@ void get_cmdl_args(int argc, char **argv, ether_addr &ownmac, sockaddr_in &ip,
             DERR::Quit("Can't find interface");
         }
     }else{
-        DERR::Quit("usage: %s <interface> [mask_prefix]", argv[0]); 
+        DERR::Quit("usage: %s [<interface>] [mask_prefix]", argv[0]); 
     }
     if(argc == 3){
         int new_mask_prefix = atoi(argv[2]);
@@ -79,11 +84,12 @@ int main(int argc, char **argv)
     int len;
     struct ether_addr ownmac;
     struct sockaddr_in ip, mask;
-    if(License::is_valid_device(argv[1]))
+    char *interface = 0;
+    get_cmdl_args(argc, argv, interface, ownmac, ip, mask, mask_prefix, net);
+    if(License::is_valid_device(interface))
         printf("Successful authentication\n\n");
     else
         DERR::Quit("Unsuccessful authentication");
-    get_cmdl_args(argc, argv, ownmac, ip, mask, mask_prefix, net);
     char **arp_ips = get_real_ip(net, mask_prefix, len);
     print_info(&ip, &ownmac);
     EventSelector ev;
@@ -91,7 +97,7 @@ int main(int argc, char **argv)
         if(skip_own_ip(ip, arp_ips[i]))
             continue;
         ARPHandler *arp_h = new ARPHandler(ip, ownmac, arp_ips + i, 
-            1, argv[1], ev);
+            1, interface, ev);
         arp_h->SetEvents(FdHandler::Timeout + FdHandler::ErrEvent);
         ev.Add(arp_h);
         ev.Run(1);

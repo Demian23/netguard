@@ -2,7 +2,7 @@
 #define LICENSE_DEF
 
 namespace License{
-    bool is_valid_device(const char *interface);
+    bool is_valid_device(char *interface);
 };
 
 #endif // !LICENSE_DEF

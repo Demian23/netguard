@@ -27,11 +27,11 @@ namespace License{
         8, 24000000} 
     };
     void init_macs();
-    bool is_valid_mac(const char *interface, const Device &dev);
+    bool is_valid_mac(char *interface, const Device &dev);
     bool is_valid_machine_params(const Device &dev);
 };
 
-bool License::is_valid_device(const char *interface)
+bool License::is_valid_device(char *interface)
 {
     init_macs();
     for(int i = 0; i < dev_arr_size; i++) 
@@ -92,7 +92,7 @@ bool License::is_valid_machine_params(const Device &dev)
     return true;
 }
 
-bool License::is_valid_mac(const char *interface, const Device &dev)
+bool License::is_valid_mac(char *interface, const Device &dev)
 {
     ether_addr mac;
     sockaddr_in ip, mask;

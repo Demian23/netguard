@@ -16,7 +16,7 @@
 namespace DNET{
     struct sockaddr_in set_addr(const char *ip, int family);
     char* get_local_ip();
-    bool findownaddr(const char *interface, struct ether_addr *ownmac, 
+    bool findownaddr(char *&interface, struct ether_addr *ownmac, 
         struct sockaddr_in *saip, struct sockaddr_in *samask);
 };
 
