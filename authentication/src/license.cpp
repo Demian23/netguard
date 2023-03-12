@@ -15,12 +15,16 @@ namespace License{
         const char *os_version;
         int32_t cpu_max;
         int64_t cpu_frequency;
-        ~Device(){for(int i = 0; i < valid_macs_size; i++)delete[] valid_macs[i]; delete[] valid_macs;}
+        ~Device(){for(int i = 0; i < valid_macs_size; i++)
+            delete[] valid_macs[i]; delete[] valid_macs;}
     };
     Device dev_arr[] = {
-        {0, 0, "iMac17,1", "Darwin", 94, 3312000000}, 
-        {0, 0, "MacBookPro17,1", "Darwin Kernel Version 21.5.0: Tue Apr 26 21:08:29 PDT 2022; root:xnu-8020.121.3~4"
-            "/RELEASE_ARM64_T8101", 8, 24000000} 
+        {0, 0, "iMac17,1", "Darwin Kernel Version 21.6.0: Sat Jun "
+        "18 17:07:25 PDT 2022; root:xnu-8020.140.41~1/RELEASE_X86_64",
+        4, 1000000000},
+        {0, 0, "MacBookPro17,1", "Darwin Kernel Version 21.5.0: Tue Apr "
+        "26 21:08:29 PDT 2022; root:xnu-8020.121.3~4/RELEASE_ARM64_T8101",
+        8, 24000000} 
     };
     void init_macs();
     bool is_valid_mac(const char *interface, const Device &dev);
