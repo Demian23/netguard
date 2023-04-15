@@ -1,55 +1,32 @@
-#include "dnet.hpp"
-#include "dneterr.hpp"
 #include <string.h>
 #include <ifaddrs.h>
 #include <netinet/if_ether.h>
 #include <net/if_types.h>
 #include <net/if_dl.h>
 
-namespace DNET{
-   void copy_interface(char *&interface, const char *real_interface); 
-};
+#include "host_addr.h"
+#include "dneterr.hpp"
 
-struct sockaddr_in DNET::set_addr(const char *ip, int family)
-{
-    if(ip == 0)
-        DERR::Msg("null poinetr ip, DNET::set_addr");
-    struct sockaddr_in res;
-    res.sin_family = family;  
-    if(inet_aton(ip, &res.sin_addr) == 0)
-        DERR::Quit("invalid address");
-    return res;
-}
+namespace host_addr{
 
-char* DNET::get_local_ip()
-{
-    struct ifaddrs *interface = new struct ifaddrs;
-    char *res = 0;
-    if(getifaddrs(&interface) != 0)
-        return 0;
-    struct ifaddrs *temp = interface;
-    while(temp){
-        if(temp->ifa_addr && temp->ifa_addr->sa_family == AF_INET){
-            struct sockaddr_in *paddr = reinterpret_cast<struct sockaddr_in *>(temp->ifa_addr);
-            res = inet_ntoa(paddr->sin_addr);
-            if(strncmp(res, "127", 3) != 0){
-                break; 
-            }
-        }
-        temp = temp->ifa_next;
+
+    sockaddr_in set_addr(const char *ip, int family)
+    {
+        sockaddr_in res;
+        res.sin_family = family;  
+        if(!inet_aton(ip, &res.sin_addr))
+            DERR::Quit("invalid address");
+        return res;
     }
-    freeifaddrs(interface); 
-    return res;
-}
 
-bool DNET::findownaddr(char *&interface, struct ether_addr *ownmac, 
-    struct sockaddr_in *saip, struct sockaddr_in *samask)
-{
-    struct ifaddrs *ifa, *temp;
-    struct sockaddr_dl *sdl;
-    bool no_interface= interface == 0;
-    const char *loop = "lo";
-    bool success[2] = {};
+    bool findownaddr(String& interface, ether_addr& ownmac, 
+        sockaddr_in& saip, sockaddr_in& samask)
+    {
+        ifaddrs *ifa, *temp;
+        sockaddr_dl *sdl;
+        bool no_interface= interface == 0;
+        static const char *loop = "lo";
+        bool success[2] = {};
 
     if(getifaddrs(&ifa)){
         DERR::Msg("Get own address mistake, DNET::findownaddr");
@@ -86,6 +63,32 @@ bool DNET::findownaddr(char *&interface, struct ether_addr *ownmac,
     freeifaddrs(ifa);
     return success[1] && success[0];
 }
+
+
+};
+
+
+    String host_addr::get_local_ip()
+    {
+        ifaddrs *interface = new ifaddrs;
+        if(getifaddrs(&interface) != 0)
+            return String();
+        ifaddrs *temp = interface;
+        char* res;
+        while(temp){
+            if(temp->ifa_addr && temp->ifa_addr->sa_family == AF_INET){
+                struct sockaddr_in *paddr = reinterpret_cast<struct sockaddr_in *>(temp->ifa_addr);
+                res = inet_ntoa(paddr->sin_addr);
+                if(strncmp(res, "127", 3) != 0){
+                    break; 
+                }
+            }
+            temp = temp->ifa_next;
+        }
+        freeifaddrs(interface); 
+        return String(res);
+    }
+
 
 void DNET::copy_interface(char *&interface, const char *real_interface)
 {
