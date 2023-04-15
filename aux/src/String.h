@@ -16,7 +16,7 @@ public:
     inline void check(int i) const;
     inline char read(int i) const;
     inline void write(int i, char c);
-    inline int size() const;
+    int size() const;
 
     Cref operator[](int i);    
     char operator[](int i) const;
@@ -34,6 +34,9 @@ bool operator==(const String& x, const String& y);
 bool operator==(const String& x, const char* y);
 bool operator!=(const String& x, const String& y);
 bool operator!=(const String& x, const char* y);
+bool equals(const String& x, const String& y, int symbols);
+bool equals(const String& x, const char* y, int symbols);
+
 
 
 #endif // !MY_STRING_DEF

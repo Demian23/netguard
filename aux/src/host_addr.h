@@ -1,14 +1,7 @@
 #ifndef HOST_ADDR_DEF 
 #define HOST_ADDR_DEF 
 
-#include <sys/socket.h>
 #include <netinet/in.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <stdint.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <net/if.h>
 #include <netinet/if_ether.h>
 #include "String.h"
 

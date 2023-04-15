@@ -1,21 +1,20 @@
-#include "dneterr.hpp"
+#include "errors.h"
 
 #include <syslog.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <errno.h>
 
-namespace DERR{
+namespace errors{
     enum{max_len = 1024};
-    bool daemon_proc;
-    void print_err(bool errno_flag, int level, const char *fmt, va_list ap);
-}
+   // bool daemon_proc;
 
-void DERR::print_err(bool errno_flag, int level, const char *fmt, va_list ap)
+void print_err(bool errno_flag, int level, const char *fmt, va_list ap)
 {
    int errno_save, size; 
-   char buff[max_len + 1];
+   char buff[max_len + 1] = {};
 
    errno_save = errno;
    vsnprintf(buff, max_len, fmt, ap);
@@ -26,16 +25,16 @@ void DERR::print_err(bool errno_flag, int level, const char *fmt, va_list ap)
        buff[size] = '\n';
    }
 
-   if(daemon_proc)
-       syslog(level,"%s", buff);
-   else{
+   //if(daemon_proc)
+   //    syslog(level,"%s", buff);
+  // else{
        fflush(stdout);
        fputs(buff, stderr);
        fflush(stderr);
-   }
+  // }
 }
 
-void DERR::Quit(const char *fmt, ...)
+void Quit(const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
@@ -44,7 +43,7 @@ void DERR::Quit(const char *fmt, ...)
     exit(1);
 }
 
-void DERR::Msg(const char *fmt, ...)
+void Msg(const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
@@ -52,7 +51,7 @@ void DERR::Msg(const char *fmt, ...)
     va_end(ap);
 }
 
-void DERR::Dump(const char *fmt, ...)
+void Dump(const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
@@ -62,7 +61,7 @@ void DERR::Dump(const char *fmt, ...)
     exit(1);
 }
 
-void DERR::Sys(const char *fmt, ...)
+void Sys(const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
@@ -71,10 +70,12 @@ void DERR::Sys(const char *fmt, ...)
     exit(1);
 }
 
-void DERR::SysRet(const char *fmt, ...)
+void SysRet(const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
     print_err(true, LOG_ERR, fmt, ap);
     va_end(ap);
+}
+
 }

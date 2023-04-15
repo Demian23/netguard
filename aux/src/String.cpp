@@ -160,3 +160,14 @@ bool operator!=(const String& x, const char* y)
 {
     return (x.size() != strlen(y)) && (strcmp(x.c_str(), y) != 0);
 }
+
+bool equals(const String& x, const String& y, int symbols)
+{
+    return strncmp(x.c_str(), y.c_str(), symbols) == 0;
+}
+
+bool equals(const String& x, const char* y, int symbols)
+{
+    return strncmp(x.c_str(), y, symbols) == 0;
+}
+
