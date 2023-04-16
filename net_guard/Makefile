@@ -22,15 +22,11 @@ LIB_BOOST=/opt/homebrew/Cellar/boost/1.81.0_1/lib/
 LIB_SSL=/opt/homebrew/Cellar/openssl@3/3.0.8/lib/
 AUX_INCLUDE=/usr/local/include/
 
-all:$(BINDIR)
-all:$(OBJ)
-all:$(BIN)
+all:$(BINDIR) $(OBJ) $(BIN)
 
 release:CPPFLAGS= -Wall -O2
 release: clean
-release:$(OBJ)
-release:$(BINDIR)
-release:$(BIN)
+release:$(OBJ) $(BINDIR) $(BIN)
 
 net_bot:$(BINDIR)
 net_bot:$(OBJ)

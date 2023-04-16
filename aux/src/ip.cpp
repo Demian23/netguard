@@ -1,12 +1,13 @@
-#include "dip.hpp"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "dnet.hpp"
+
+#include "ip.h"
+
+namespace IP{
 
 static int itoa(int n, char s[]);
-
-short DIP::mask_prefix(const char *mask)
+short mask_prefix(const char *mask)
 {
     short mask_len = 0;
     uint32_t mask_n = ipv4_to_number(mask);
@@ -15,7 +16,7 @@ short DIP::mask_prefix(const char *mask)
     return mask_len;
 }
 
-uint32_t DIP::mask_number(const short mask_prefix)
+uint32_t mask_number(const short mask_prefix)
 {
     uint32_t m = 1;
     for(int i = 0; i < mask_prefix - 1; i++){
@@ -26,28 +27,28 @@ uint32_t DIP::mask_number(const short mask_prefix)
     return m;
 }
 
-uint32_t DIP::ip_amount(const short mask_prefix)
+uint32_t ip_amount(const short mask_prefix)
 {
     uint32_t res = (1 << (32 - mask_prefix)) - 2;
     return res; 
 }
 
 //mask in prefix format as 192.168.1.1/24, where 24 -> mask
-char* DIP::ipv4_net(const char *some_ip, const short mask_prefix)
+char* ipv4_net(const char *some_ip, const short mask_prefix)
 {
     uint32_t ip_n = ipv4_to_number(some_ip);
     uint32_t m = mask_number(mask_prefix);
     return number_to_ipv4(ip_n & m);
 }
 
-char* DIP::ipv4_net(const char *some_ip, const char *mask)
+char* ipv4_net(const char *some_ip, const char *mask)
 {
     uint32_t ip_n = ipv4_to_number(some_ip);
     uint32_t mask_n = ipv4_to_number(mask);
     return number_to_ipv4(ip_n & mask_n);
 }
 
-char** DIP::all_net_ipv4(const char *net, uint32_t start,
+char** all_net_ipv4(const char *net, uint32_t start,
     uint32_t interval_size)
 {
     uint32_t net_number = ipv4_to_number(net);
@@ -60,7 +61,7 @@ char** DIP::all_net_ipv4(const char *net, uint32_t start,
     return res; 
 }
 
-uint32_t DIP::ipv4_to_number(const char *ip)
+uint32_t ipv4_to_number(const char *ip)
 {
     short size = strlen(ip), pos = 0, j = 0, number;    
     const char *sep = ".";
@@ -78,7 +79,7 @@ uint32_t DIP::ipv4_to_number(const char *ip)
     return res;
 }
 
-char* DIP::number_to_ipv4(const uint32_t number)
+char* number_to_ipv4(const uint32_t number)
 {
     char buff[4][4] = {};    
     int size = 0;
@@ -93,7 +94,7 @@ char* DIP::number_to_ipv4(const uint32_t number)
 
 }
 
-DIP::DevType DIP::devtype_from_vendor(const char *vendor)
+DevType devtype_from_vendor(const char *vendor)
 {
     const char *cp_vendors[] = {"TP-LINK TECHNOLOGIES CO.,LTD.", 
         "Cisco Systems, Inc", "D-Link Corporation"};
@@ -132,4 +133,5 @@ static int itoa(int n, char s[])
 	s[i] = '\0';
 	reverse(s);
 	return i;
+}
 }

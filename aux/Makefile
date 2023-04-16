@@ -6,13 +6,11 @@ SRCS=$(wildcard $(SRC)/*.cpp)
 OBJS=$(patsubst $(SRC)/%.cpp, $(OBJ)/%.o, $(SRCS))
 SUBMITSRCNAME=net_aux.zip
 
-all:$(OBJ)
-all:$(OBJS)
+all:$(OBJ) $(OBJS)
 
 release:CPPFLAGS= -Wall -O2
 release: clean
-release:$(OBJ)
-release:$(OBJS)
+release:$(OBJ) $(OBJS)
 
 $(OBJ)/%.o: $(SRC)/%.cpp
 	$(CPPC) $(CPPFLAGS) -c $< -o $@ 

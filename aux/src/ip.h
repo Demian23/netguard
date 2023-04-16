@@ -1,7 +1,11 @@
-#ifndef DIP_DEF
-#define DIP_DEF
+#ifndef IP_DEF
+#define IP_DEF
+
 #include <stdint.h>
-namespace DIP{
+#include <arpa/inet.h>
+
+namespace IP{
+    enum{max_mask_prefix = 32};
     enum DevType{endpoint, customer_premise};
     uint32_t ipv4_to_number(const char *ip);
     char *number_to_ipv4(const uint32_t number);

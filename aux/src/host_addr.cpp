@@ -18,12 +18,12 @@ sockaddr_in set_addr(const char *ip, int family)
     return res;
 }
 
-bool findownaddr(String& interface, ether_addr& ownmac, 
+bool findownaddr(std::string& interface, ether_addr& ownmac, 
     sockaddr_in& saip, sockaddr_in& samask)
 {
     ifaddrs *ifa, *temp;
     sockaddr_dl *sdl;
-    static const String loop_interface = "lo";
+    static const std::string loop_interface = "lo";
 
     bool find_interface = interface.size() == 0, find_mac = false, 
         find_ip = false;
@@ -31,7 +31,8 @@ bool findownaddr(String& interface, ether_addr& ownmac,
     if(!getifaddrs(&ifa)){
         for(temp = ifa; temp; temp = temp->ifa_next){
             if(find_interface){
-                if(equals(loop_interface, temp->ifa_name, loop_interface.size()))
+                if(loop_interface == 
+                    std::string(temp->ifa_name).substr(0, loop_interface.size())) 
                     continue;
                 else
                     interface = temp->ifa_name;
@@ -67,11 +68,11 @@ bool findownaddr(String& interface, ether_addr& ownmac,
 };
 
 
-String host_addr::get_local_ip()
+std::string host_addr::get_local_ip()
 {
     ifaddrs *interface = new ifaddrs;
     if(getifaddrs(&interface) != 0)
-        return String();
+        return std::string();
     ifaddrs *temp = interface;
     char* res;
     while(temp){
@@ -85,6 +86,6 @@ String host_addr::get_local_ip()
         temp = temp->ifa_next;
     }
     freeifaddrs(interface); 
-    return String(res);
+    return std::string(res);
 }
 

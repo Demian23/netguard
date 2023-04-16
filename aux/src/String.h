@@ -22,7 +22,7 @@ public:
     char operator[](int i) const;
     String& operator+=(const String& x);
     String& operator+=(const char* x);
-    inline const char*const c_str()const; // use only when there is no doubt that object will 
+    const char*const c_str()const; // use only when there is no doubt that object will 
                          // remain while this c string in use
 private:
     StrRep* representation;

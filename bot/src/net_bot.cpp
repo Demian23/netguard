@@ -1,7 +1,7 @@
 #include <tgbot/tgbot.h>
 #include <cstdio>
 #include <cstdlib>
-#include "../../aux/src/dneterr.hpp"
+#include "../../aux/src/errors.h"
 #include "../../events/src/arp_handler.hpp"
 #include "../../aux/src/dip.hpp"
 #include "../../aux/src/darp.hpp"

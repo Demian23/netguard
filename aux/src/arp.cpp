@@ -1,17 +1,47 @@
-#include "darp.hpp"
-#include "dneterr.hpp"
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <net/bpf.h>
-namespace DARP{
-    void prepareframe(struct ether_addr *ownmac, struct sockaddr_in
-        *ip, struct ether_header *ethhdr, struct ether_arp *arp);
-};
+#include <netinet/if_ether.h>
+#include <arpa/inet.h>
+#include <net/if.h>
+#include <string.h>
 
-void DARP::writequery(int fd, struct ether_addr *ownmac, 
-    struct sockaddr_in *ownip, char *ip)
+#include "arp.h"
+#include "errors.h"
+
+namespace ARP{
+enum{arp_timeout = 50000};
+
+void set_timeout(int fd)
+{
+    timeval timeout = {.tv_sec = 0, .tv_usec = arp_timeout};
+    ioctl(fd, BIOCSRTIMEOUT, &timeout);
+}
+
+void prepareframe(ether_addr *ownmac, sockaddr_in *ip, 
+    ether_header *ethhdr, ether_arp *arp)
+{
+    memset(reinterpret_cast<uint8_t *>(&ethhdr->ether_dhost), 0xFF, ETHER_ADDR_LEN);     
+    memcpy(reinterpret_cast<uint8_t *>(&ethhdr->ether_shost),
+        reinterpret_cast<uint8_t *>(ownmac), ETHER_ADDR_LEN);
+    ethhdr->ether_type = htons(ETHERTYPE_ARP);
+
+    arp->arp_hrd = htons(ARPHRD_ETHER);
+    arp->arp_pro = htons(ETHERTYPE_IP);
+    arp->arp_hln = ETHER_ADDR_LEN;
+    arp->arp_pln = 4;
+    arp->arp_op = htons(ARPOP_REQUEST);
+    memcpy(reinterpret_cast<uint8_t *>(arp->arp_sha),
+        reinterpret_cast<uint8_t *>(ownmac), sizeof(ether_addr));
+    memcpy(reinterpret_cast<uint8_t *>(arp->arp_spa),
+        reinterpret_cast<uint8_t *>(&ip->sin_addr.s_addr), 4 * sizeof(uint8_t));
+    memset(reinterpret_cast<uint8_t *>(arp->arp_tha), 0, ETHER_ADDR_LEN);
+}
+
+void writequery(int fd, ether_addr *ownmac, 
+    sockaddr_in *ownip, const char *ip)
 {
     const int size = sizeof(struct ether_header) +
        sizeof(struct ether_arp);
@@ -36,30 +66,10 @@ void DARP::writequery(int fd, struct ether_addr *ownmac,
    } 
 }
 
-void DARP::prepareframe(struct ether_addr *ownmac, struct sockaddr_in *ip, 
-    struct ether_header *ethhdr, struct ether_arp *arp)
-{
-    memset(reinterpret_cast<uint8_t *>(&ethhdr->ether_dhost), 0xFF, ETHER_ADDR_LEN);     
-    memcpy(reinterpret_cast<uint8_t *>(&ethhdr->ether_shost),
-        reinterpret_cast<uint8_t *>(ownmac), ETHER_ADDR_LEN);
-    ethhdr->ether_type = htons(ETHERTYPE_ARP);
-
-    arp->arp_hrd = htons(ARPHRD_ETHER);
-    arp->arp_pro = htons(ETHERTYPE_IP);
-    arp->arp_hln = ETHER_ADDR_LEN;
-    arp->arp_pln = 4;
-    arp->arp_op = htons(ARPOP_REQUEST);
-    memcpy(reinterpret_cast<uint8_t *>(arp->arp_sha),
-        reinterpret_cast<uint8_t *>(ownmac), sizeof(struct ether_addr));
-    memcpy(reinterpret_cast<uint8_t *>(arp->arp_spa),
-        reinterpret_cast<uint8_t *>(&ip->sin_addr.s_addr), 4 * sizeof(uint8_t));
-    memset(reinterpret_cast<uint8_t *>(arp->arp_tha), 0, ETHER_ADDR_LEN);
-}
-
-bool DARP::collectresponse(int fd, arp_pair &p, char *buffer, int buflen)
+bool collectresponse(int fd, arp_pair &p, char *buffer, int buflen)
 {
     int len;
-    struct bpf_hdr *bpf_h = reinterpret_cast<struct bpf_hdr *>(buffer);
+    bpf_hdr *bpf_h = reinterpret_cast<bpf_hdr *>(buffer);
     len = read(fd, buffer, buflen);
     if(len >= sizeof(struct bpf_hdr) && len >= bpf_h->bh_hdrlen + 0x2a 
         && buffer[bpf_h->bh_hdrlen + 0x12] == 0x06
@@ -72,7 +82,7 @@ bool DARP::collectresponse(int fd, arp_pair &p, char *buffer, int buflen)
     return false;
 }
 
-bool DARP::set_bpf_arp(int &fd, int &buflen, const char *interface)
+bool set_bpf_arp(int &fd, int &buflen, const char *interface)
 {
 	struct bpf_insn insns[] = {
 		// Load word at octet 12
@@ -102,7 +112,7 @@ bool DARP::set_bpf_arp(int &fd, int &buflen, const char *interface)
             break;
     }
     if(fd < 0){
-        DERR::Sys("Cant open bpf, DBPF::set_bpf");
+        errors::Sys("Cant open bpf, DBPF::set_bpf");
     }
     struct ifreq ir;
     strncpy(ir.ifr_name, interface, IFNAMSIZ);
@@ -110,26 +120,15 @@ bool DARP::set_bpf_arp(int &fd, int &buflen, const char *interface)
         ioctl(fd, BIOCIMMEDIATE, &buflen) != -1 &&
         ioctl(fd, BIOCGBLEN, &buflen) != -1;
     if(!res)
-        DERR::Sys("ioctl, DBPF::set_bpf");
+        errors::Sys("ioctl, DBPF::set_bpf");
     res = ioctl(fd, BIOCGDLT, &dlt) != -1 && dlt == DLT_EN10MB;
     if(!res)
-        DERR::Sys("not ethernet? DBPF::set_bpf");
+        errors::Sys("not ethernet? DBPF::set_bpf");
     res = ioctl(fd, BIOCSETF, &filter) != -1;
     if(!res)
-        DERR::Sys("Cant set BPF rule, DBPF::set_bpf");
+        errors::Sys("Cant set BPF rule, DBPF::set_bpf");
+    set_timeout(fd);
     return res;
 }
 
-void DARP::set_nonblock(int fd)
-{
-	int flags = fcntl(fd, F_GETFL);
-	fcntl(fd, F_SETFL, flags | O_NONBLOCK);
-}
-
-void DARP::set_timeout(int fd)
-{
-    struct timeval timeout;
-    timeout.tv_sec = 0;
-    timeout.tv_usec = arp_timeout;
-    ioctl(fd, BIOCSRTIMEOUT, &timeout);
-}
+};

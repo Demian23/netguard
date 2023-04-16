@@ -1,5 +1,5 @@
-CPPC = g++
-CPPFLAGS = -g -Wall
+CPPC=g++
+CPPFLAGS=-g -Wall
 SRC=src
 OBJ=obj
 SRCS=$(wildcard $(SRC)/*.cpp)
@@ -9,10 +9,9 @@ SUBMITSRCNAME=events.zip
 all:$(OBJ)
 all: $(OBJS)
 
-release: CFLAGS = -O2
+release:CPPFLAGS=-Wall -O2
 release:clean
-release:$(OBJ)
-release: $(OBJS)
+release:$(OBJ) $(OBJS)
 
 $(OBJ):
 	mkdir -p $(OBJ)

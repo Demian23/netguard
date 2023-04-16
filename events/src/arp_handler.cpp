@@ -1,21 +1,18 @@
-#include "arp_handler.hpp"
+#include "arp_handler.h"
+#include "../../aux/src/errors.h"
+#include <arpa/inet.h>
 
-ARPHandler::ARPHandler(sockaddr_in a_ip, ether_addr a_mac, char **ips, 
-    const int len, const char *a_interface, EventSelector &a_sel)
+ARPHandler::ARPHandler(sockaddr_in a_ip, ether_addr a_mac, const std::string& dest, 
+    const std::string& a_interface, EventSelector &a_sel)
     : FdHandler(-1, true), sel(a_sel), ip(a_ip), mac(a_mac), interface(a_interface), 
-    dest_ips(ips), pairs_size(len), timeout_counter(0)
+    dest_ip(dest), find(false)
 {
-    DARP::set_bpf_arp(fd, buffer_length, interface);
-    DARP::set_timeout(fd);
-    pairs = new DARP::arp_pair[pairs_size];
+    ARP::set_bpf_arp(fd, buffer_length, interface.c_str());
+    pair.ip.sin_family = AF_INET;
     bpf_buffer = new char[buffer_length];
 }
 
-ARPHandler::~ARPHandler()
-{
-    delete[] bpf_buffer;
-    delete[] pairs;
-}
+ARPHandler::~ARPHandler(){delete[] bpf_buffer;}
 
 int ARPHandler::HandleRead()
 {
@@ -42,30 +39,20 @@ int ARPHandler::HandleWrite()
 
 int ARPHandler::HandleError()
 {
-    DERR::Sys("Some error on ARPHandler");
+    errors::SysRet("%s", __LINE__);
     return 0;
 }
 
 int ARPHandler::HandleTimeout()
 {
-    for(int i = 0; i < pairs_size; i++){
-        timeout_counter = 0;
-        bool endflag;
-        while(timeout_counter < 5){
-            DARP::writequery(fd, &mac, &ip, dest_ips[i]);
-            endflag= DARP::collectresponse(fd, pairs[i], bpf_buffer, buffer_length);
-            pairs[i].ip.sin_family = AF_INET;
-            char *ip_str = inet_ntoa(pairs[i].ip.sin_addr);
-            endflag &= strcmp(dest_ips[i], ip_str) == 0;
-            if(endflag)
-                break;
-            else
-                timeout_counter++;
-        }
-        if(!endflag && timeout_counter >= 5){
-            inet_aton(dest_ips[i], &(pairs[i].ip.sin_addr));
-        }
-    }
+    // this code should be rewrited to HandleRead/Write
+    int counter = 0;
+    do{
+        ARP::writequery(fd, &mac, &ip, dest_ip.c_str());
+        find = ARP::collectresponse(fd, pair, bpf_buffer, buffer_length) 
+            && dest_ip == inet_ntoa(pair.ip.sin_addr);
+        counter++;
+    }while(!find && counter < 5);
     sel.EndRun();
     return 0;
 }

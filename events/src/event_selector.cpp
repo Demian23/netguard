@@ -1,8 +1,7 @@
 #include "event_selector.h"
-#include "fd_handlers.h"
 #include <fcntl.h>
+#include <unistd.h>
 #include <errno.h>
-#include <sys/poll.h>
 #include <sys/wait.h>
 
 //      EventHandler
@@ -24,7 +23,7 @@ unsigned EventHandler::FindIndex(FdHandler *h)
 void EventHandler::ExpandFds()
 {
     unsigned new_size = fds_size > 0 ? fds_size << 1 : default_size;
-    pfd *new_fds = new pfd[new_size];
+    pollfd *new_fds = new pollfd[new_size];
     bool *new_timeouts = new bool[new_size];
     int i;
     for(i = 0; i < fds_size; i++){
@@ -43,16 +42,22 @@ void EventHandler::ExpandFds()
     timeouts = new_timeouts;
 }
 
-unsigned EventHandler::FindFreeIndex()
+void EventHandler::RemoveFreeHandlers()
 {
     Item *temp_p = p;
     while(temp_p != 0){
         if(temp_p->h->GetCond() == temp_p->h->done){
-            RemoveHandler(temp_p->index);
-        } 
-        temp_p = temp_p->next;
+            Item* save_p = temp_p;
+            temp_p = temp_p->next;
+            RemoveHandler(save_p->index);
+        } else 
+            temp_p = temp_p->next;
+
     }
-    
+}
+
+unsigned EventHandler::FindFreeIndex()
+{
     for(int i = 0; i < fds_size; i++){
        if(fds[i].fd == free) 
            return i;
@@ -78,26 +83,26 @@ bool EventHandler::EventsToTimeout(FdHandler *h)
 
 bool EventHandler::AddHandler(FdHandler *new_h)
 {
+    RemoveFreeHandlers();
     if(new_h == 0)
         return false;
     if(p == 0){
         p = new Item(new_h, 0); 
-        ExpandFds();
-        nfds = 1;
         fds[0].fd = new_h->GetFd();
         fds[0].events = EventsToInt(new_h);
         fds[0].revents = 0;
         timeouts[0] = EventsToTimeout(new_h);
+        nfds = 1;
     } else {
         unsigned index = FindFreeIndex();
         Item *new_item = new Item(new_h, index); 
         new_item->next = p;
         p = new_item;
-        nfds++;
         fds[index].fd = new_h->GetFd();
         fds[index].events = EventsToInt(new_h);
         fds[index].revents = 0;
         timeouts[index] = EventsToTimeout(new_h);
+        nfds++;
     }    
     return true;
 }
@@ -106,9 +111,12 @@ EHCursor EventHandler::operator[](unsigned int index)
 {
     Item *temp_p;
     for(temp_p = p; temp_p != 0 && temp_p->index != index; temp_p = temp_p->next);
-    return EHCursor(*this, temp_p);
+    if(temp_p)
+        return EHCursor(*this, temp_p);
+    else 
+        return EHCursor(*this);
 }
-void EventHandler::FreeResources(int index, pfd *arr, bool *t)
+void EventHandler::FreeResources(int index, pollfd *arr, bool *t)
 {
     arr[index].fd = free;
     arr[index].events = 0;
@@ -121,9 +129,9 @@ bool EventHandler::RemoveHandler(unsigned int index)
    if(temp_p == 0)
        return false;
    if(temp_p->index == index){
+        nfds--;
         p = p->next;
         FreeResources(index, fds, timeouts);
-        nfds--;
         delete temp_p;
         return true;
    }
@@ -131,9 +139,9 @@ bool EventHandler::RemoveHandler(unsigned int index)
            temp_p->index != index; prev = temp_p, temp_p = temp_p->next){}
     if(temp_p == 0)
         return false;
+    nfds--;
     prev->next = temp_p->next;
     FreeResources(index, fds, timeouts);
-    nfds--;
     delete temp_p;
     return true;
 }
@@ -161,8 +169,20 @@ int EHCursor::operator&(int val)
 
 void EHCursor::ResetEvents()
 {
-   eh.fds[index].events = eh.EventsToInt(item->h); 
-   eh.fds[index].revents = 0;
+    if(-1 != index){
+        eh.fds[index].events = eh.EventsToInt(item->h); 
+        eh.timeouts[index] = eh.EventsToTimeout(item->h);
+        eh.fds[index].revents = 0;
+    }
+}
+
+void EHCursor::ResetFd(int a_fd, bool a_own, int a_events)
+{
+    if(-1 != index){
+        item->h->ChangeFd(a_fd, a_own, a_events);
+        ResetEvents();
+        eh.fds[index].fd = a_fd;
+    }
 }
 
 
@@ -187,8 +207,6 @@ void EventSelector::Run(int timeout)
             else
                 break;
         }
-
-
         for(int i = 0; i < handlers.nfds; i++){
             if(handlers[i] & POLLIN)
                 handlers[i]->HandleRead();
@@ -199,6 +217,7 @@ void EventSelector::Run(int timeout)
             if(timeout_flag & handlers[i].IsTimeout())
                 handlers[i]->HandleTimeout();
         }
+        handlers.RemoveFreeHandlers();
     }while(!end_run);
 }
 
