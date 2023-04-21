@@ -1,5 +1,5 @@
 #include "arp_handler.h"
-#include "../../aux/src/errors.h"
+#include "../../net/src/errors.h"
 #include <arpa/inet.h>
 
 ARPHandler::ARPHandler(sockaddr_in a_ip, ether_addr a_mac, const std::string& dest, 

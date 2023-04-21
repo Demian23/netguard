@@ -1,8 +1,8 @@
 #include "icmp_handlers.h"
-#include "../../aux/src/errors.h"
-#include "../../aux/src/host_addr.h"
+#include "../../net/src/errors.h"
+#include "../../net/src/host_addr.h"
 #include "fd_handlers.h"
-#include <unistd.h>
+
 
 SendEcho::SendEcho(int a_fd, bool own, const char *ip, EventSelector& father,
     int a_id)
@@ -70,3 +70,4 @@ int RecvEcho::HandleTimeout()
     errors::Msg("Try to handle timeout form RecvEcho");
     return -1;
 }
+

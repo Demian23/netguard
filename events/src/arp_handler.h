@@ -3,7 +3,7 @@
 
 #include "fd_handlers.h"
 #include "event_selector.h"
-#include "../../aux/src/arp.h"
+#include "../../net/src/arp.h"
 #include <string>
 
 class ARPHandler : public FdHandler{

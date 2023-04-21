@@ -8,7 +8,7 @@ OBJS_EVENT=$(wildcard $(OBJ_EVENT)/*.o)
 OBJS_AUTH=$(wildcard $(OBJ_AUTH)/*.o)
 
 BINDIR=bin
-BIN=$(BINDIR)/net_guard
+BIN=$(BINDIR)/test
 
 all:$(BINDIR) $(BIN)
 
@@ -16,8 +16,8 @@ release:CPPFLAGS= -Wall -O2
 release: clean
 release:$(BINDIR) $(BIN)
 
-$(BIN): $(OBJS_AUX) $(OBJS_EVENT) $(OBJS_AUTH) $(OBJS)
-	$(CPPC) $(CPPFLAGS) $^ src/main.cpp -o $@
+$(BIN): $(OBJS_AUX) $(OBJS_EVENT) $(OBJS_AUTH)
+	$(CPPC) $(CPPFLAGS) $^ src/test.cpp -o $@
 
 $(BINDIR):
 	mkdir -p $(BINDIR)

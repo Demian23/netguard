@@ -5,8 +5,8 @@
 #include <net/ethernet.h>
 
 
-#include "../../aux/src/host_addr.h"
-#include "../../aux/src/errors.h"
+#include "../../net/src/host_addr.h"
+#include "../../net/src/errors.h"
 #include "license.hpp"
 
 namespace License{

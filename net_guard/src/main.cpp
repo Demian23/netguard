@@ -5,15 +5,15 @@
 #include <unistd.h>
 #include <netdb.h>
 
-#include "../../aux/src/ip.h"
-#include "../../aux/src/arp.h"
-#include "../../aux/src/mac.h"
+#include "../../net/src/ip.h"
+#include "../../net/src/arp.h"
+#include "../../net/src/mac.h"
 
-#include "../../aux/src/errors.h"
+#include "../../net/src/errors.h"
 #include "../../events/src/arp_handler.h"
 #include "../../events/src/icmp_handlers.h"
 #include "../../authentication/src/license.hpp"
-#include "../../aux/src/host_addr.h"
+#include "../../net/src/host_addr.h"
 
 static ether_addr not_found;
 

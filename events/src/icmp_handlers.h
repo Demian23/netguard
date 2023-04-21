@@ -3,7 +3,7 @@
 
 #include "fd_handlers.h"
 #include "event_selector.h"
-#include "../../aux/src/icmp.h"
+#include "../../net/src/icmp.h"
 
 class SendEcho : public FdHandler{
 private:
@@ -34,6 +34,7 @@ public:
     virtual int HandleRead();
     bool Exists() const {return seq;}
     virtual ~RecvEcho(){} //wrong need to free at least buffers in msg
+
 };
 
 #endif
