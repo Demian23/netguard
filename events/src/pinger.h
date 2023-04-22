@@ -2,23 +2,29 @@
 #define PINGER_DEF
 
 #include "scheduler.h"
-#include "icmp_handlers.h"
+#include "../../net/src/ip.h"
 
-class Pinger : public NetAct{
+class SendEcho; class RecvEcho;
+class Pinger : public ScheduledEvent{
 public:
-    Pinger(Scheduler& m, const std::string& own_ip, const std::string& net, short mask_prefix);
+    Pinger(Scheduler& m, const std::set<std::string>& ip_set);
     virtual void Act();
     virtual ~Pinger();
+    void UpdateHandlerEvents(FdHandler* h);
 private:
-    char** ping_ips;
+    const std::set<std::string>& ping_ips;
+    std::set<std::string>::const_iterator it;
+    std::vector<std::string> real_ip;
     SendEcho** send_handlers; 
     RecvEcho** recieve_hanlders; 
     int* send_icmp_sd;
     int* recieve_icmp_sd; 
-    int ping_interval_size;
     int poll_size;
     int id;
-    int current_ip_index;
+    bool HandlersDone()const;
+    bool CreateHandlers();
+    void GainResults();
+    void UpdateDevices();
 };
 
 #endif // !PINGER_DEF

@@ -8,26 +8,35 @@
 #include <string>
 
 
-class NetAct;
+class ScheduledEvent;
 //Scheduler must have on descriptor log file
 class Scheduler : public FdHandler{
 public:
-    Scheduler(EventSelector& sel, const std::vector<NetDevice>& start_devices)
-        : FdHandler(-1, false), selector(sel), devices(start_devices)
+    Scheduler(int logfd, EventSelector& sel, std::vector<NetDevice>& start_devices)
+        : FdHandler(logfd, false), selector(sel), devices(start_devices)
     {SetEvents(Timeout + ErrEvent);}
+    bool AddHandler(FdHandler* h){return selector.Add(h);} 
+    void UpdateHandlerEvents(FdHandler* h){return selector.UpdateEvents(h);}
+    void EndNormalScheduledEvent();
+    void SetNormalScheduledEvent(ScheduledEvent* sch_event);
+    std::vector<NetDevice>& GetDevices(){return devices;} 
+    virtual int HandleRead();
+    virtual int HandleWrite();
+    virtual int HandleError();
+    virtual int HandleTimeout();
 private:
     EventSelector& selector;
-    std::queue<NetAct*> schedule;
-    std::vector<NetDevice> devices;
+    std::queue<ScheduledEvent*> schedule;
+    std::vector<NetDevice>& devices;
 };
 
-class NetAct{
+class ScheduledEvent{
 public:
     virtual void Act() = 0;
+    ScheduledEvent(Scheduler& m) : master(m){}
+    virtual ~ScheduledEvent(){}
 protected:
-    NetAct(Scheduler& m) : master(m){}
     Scheduler& master;
-    virtual ~NetAct(){}
 };
 
 #endif // !SCHEDULER_DEF

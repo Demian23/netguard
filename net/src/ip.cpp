@@ -7,7 +7,7 @@
 namespace IP{
 
 static int itoa(int n, char s[]);
-short mask_prefix(const char *mask)
+short mask_prefix(const std::string& mask)
 {
     short mask_len = 0;
     uint32_t mask_n = ipv4_to_number(mask);
@@ -34,64 +34,54 @@ uint32_t ip_amount(const short mask_prefix)
 }
 
 //mask in prefix format as 192.168.1.1/24, where 24 -> mask
-char* ipv4_net(const char *some_ip, const short mask_prefix)
+std::string ipv4_net(const std::string& some_ip, const short mask_prefix)
 {
     uint32_t ip_n = ipv4_to_number(some_ip);
     uint32_t m = mask_number(mask_prefix);
     return number_to_ipv4(ip_n & m);
 }
 
-char* ipv4_net(const char *some_ip, const char *mask)
+std::string ipv4_net(const std::string& some_ip, const std::string& mask)
 {
     uint32_t ip_n = ipv4_to_number(some_ip);
     uint32_t mask_n = ipv4_to_number(mask);
     return number_to_ipv4(ip_n & mask_n);
 }
 
-char** all_net_ipv4(const char *net, uint32_t start,
+std::set<std::string> all_net_ipv4(const std::string& net, uint32_t start,
     uint32_t interval_size)
 {
     uint32_t net_number = ipv4_to_number(net);
     net_number += start;
-    char **res = new char*[interval_size];
+    std::set<std::string> res;
     for(int i = 0; i < interval_size; i++){
         net_number++;
-        res[i] = number_to_ipv4(net_number);
+        res.insert(number_to_ipv4(net_number));
     }
     return res; 
 }
 
-uint32_t ipv4_to_number(const char *ip)
+uint32_t ipv4_to_number(const std::string& ip)
 {
-    short size = strlen(ip), pos = 0, j = 0, number;    
-    const char *sep = ".";
-    uint32_t res = 0;
-    for(;j < size;){
-        char temp[4] = {};
-        pos = strcspn(ip + j, sep);
-        strncpy(temp, ip + j, pos);
-        number = atoi(temp);
-        res |= number;
-        j += pos + 1;
-        if(j < size)
-            res <<= 8;
+    uint32_t res = 0; int start = 0, end = 0;
+    for(int i = 0; i < 3; i++){
+        end = ip.find('.', start);
+        res |= std::stoi(ip.substr(start, end));
+        res <<= 8;
+        start = end + 1;
     }
+    res |= std::stoi(ip.substr(start, ip.size()));
     return res;
 }
 
-char* number_to_ipv4(const uint32_t number)
+std::string number_to_ipv4(const uint32_t number)
 {
     char buff[4][4] = {};    
-    int size = 0;
     uint32_t temp = number;
     for(int i = 3; i >= 0; i--, temp >>= 8){
         itoa(temp & 0xFF, buff[i]);
-        size += strlen(buff[i]);
     }
-    char *res = new char[size + 3 + 1];
-    sprintf(res, "%s.%s.%s.%s", buff[0], buff[1], buff[2], buff[3]);
-    return res;
-
+    return std::string(buff[0]) + "." + buff[1] + "." + buff[2] + "." + buff[3];
 }
 
 DevType devtype_from_vendor(const char *vendor)

@@ -1,6 +1,31 @@
-#include "arp_handler.h"
+#include "arper.h"
+
+#include "fd_handlers.h"
+#include "../../net/src/arp.h"
 #include "../../net/src/errors.h"
-#include <arpa/inet.h>
+
+class ARPHandler : public FdHandler{
+private:
+    EventSelector &sel;
+    ARP::arp_pair pair;
+    sockaddr_in ip;
+    ether_addr mac;
+    std::string interface;
+    std::string dest_ip;
+    char* bpf_buffer; 
+    int buffer_length;
+    bool find;
+public:
+    ARPHandler(sockaddr_in a_ip, ether_addr a_mac, const std::string& dest, 
+        const std::string& a_interface, EventSelector &a_sel);
+    virtual ~ARPHandler();
+    virtual int HandleRead();    
+    virtual int HandleError();
+    virtual int HandleWrite();
+    virtual int HandleTimeout();
+    const ARP::arp_pair GetPair() const{return pair;}
+    bool Find()const{return find;}
+};
 
 ARPHandler::ARPHandler(sockaddr_in a_ip, ether_addr a_mac, const std::string& dest, 
     const std::string& a_interface, EventSelector &a_sel)
@@ -55,4 +80,20 @@ int ARPHandler::HandleTimeout()
     }while(!find && counter < 5);
     sel.EndRun();
     return 0;
+}
+
+Arper::Arper(Scheduler& m) : ScheduledEvent(m)
+{
+    std::vector<NetDevice> temp = m.GetDevices(); 
+    for(std::vector<NetDevice>::iterator it = temp.begin(); it != temp.end();
+        it++){
+        if(!it->HasMac()){
+            updated_dev.push_back(*it);
+        }
+    }
+}
+
+void Arper::Act()
+{
+
 }

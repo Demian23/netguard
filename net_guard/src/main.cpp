@@ -1,3 +1,4 @@
+/*
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
@@ -28,7 +29,6 @@ int poll_ip_size(const int interval_size)
         res <<= 1;
     return res;
 }
-
 std::vector<std::string> ping_net(const std::string& net, 
     const short mask_prefix, const std::string& own_ip)
 {
@@ -158,6 +158,46 @@ void print_res_info(const ARP::arp_pair& p)
     }
     putchar('\n');
 }
+*/
+
+#include "../../events/src/scheduler.h"
+#include "../../events/src/pinger.h"
+#include "../../net/src/host_addr.h"
+#include "../../net/src/ip.h"
+#include "../../net/src/errors.h"
+
+
+void get_cmdl_args(int argc, char **argv, std::string& interface, ether_addr &ownmac, sockaddr_in &ip,
+        sockaddr_in &mask, short &mask_prefix, std::string& net)
+{
+    enum{cmdl_argc = 3};
+    if(argc == cmdl_argc){
+        interface = argv[1];
+        bool interface_exist = host_addr::findownaddr(interface, ownmac, ip, mask);
+        if(interface_exist){
+            int usr_mask_prefix = atoi(argv[2]);
+            mask_prefix = IP::mask_prefix(inet_ntoa(mask.sin_addr));
+            net = inet_ntoa(ip.sin_addr);
+            if(usr_mask_prefix < IP::max_mask_prefix && usr_mask_prefix >= mask_prefix)
+                net = IP::ipv4_net(net, usr_mask_prefix);
+            else
+                errors::Quit("Wrong mask for this net."
+                   " Should be greater than %d.", mask_prefix);
+       } else 
+            errors::Quit("Interface don't exists.");
+    } else 
+        errors::Quit("usage: %s <interface> <mask_prefix>", argv[0]); 
+}
+
+void print(const NetDevice& dev)
+{
+    const dev_info& info = dev.GetInfo();
+    dev_info::const_iterator it = info.begin();
+    for(;it != info.end(); it++){
+        printf("%s: %s\n", it->first.c_str(), it->second.c_str());
+    }
+    putchar('\n');
+}
 
 int main(int argc, char **argv)
 {
@@ -165,14 +205,22 @@ int main(int argc, char **argv)
     ether_addr ownmac;
     sockaddr_in ip, mask;
     std::string interface, net;
-    memset((void*)&not_found, 0xFF, sizeof(not_found));
     get_cmdl_args(argc, argv, interface, ownmac, ip, mask, mask_prefix, net);
-
-    if(License::is_valid_device(interface)){
-    std::vector<std::string> pinged = ping_net(net, mask_prefix, inet_ntoa(ip.sin_addr));
-    std::vector<ARP::arp_pair> real_devices = ip_to_mac(ip, ownmac, pinged, interface);
-    std::for_each(real_devices.begin(), real_devices.end(), print_res_info);        
-    } else
-       errors::Quit("Unsuccessful authentication");
+    
+    NetDevice own_device; 
+    own_device.SetIpv4(ip.sin_addr);
+    own_device.SetMac(ownmac);
+    std::vector<NetDevice> devices;
+    devices.push_back(own_device);
+    
+    EventSelector selector;
+    Scheduler* scheduler = new Scheduler(2, selector, devices);
+    std::set<std::string> ip_set = IP::all_net_ipv4(net, 0, IP::ip_amount(mask_prefix));
+    ip_set.erase(inet_ntoa(ip.sin_addr));
+    Pinger* ping = new Pinger(*scheduler, ip_set);
+    scheduler->SetNormalScheduledEvent(ping);
+    selector.Add(scheduler);
+    selector.Run(1000);
+    std::for_each(devices.begin(), devices.end(), print); 
     return 0;
 }

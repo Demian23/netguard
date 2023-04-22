@@ -1,16 +1,13 @@
-#include <netinet/in.h>
-#include <netinet/if_ether.h>
-#include <arpa/inet.h>
-#include <string>
 
 
 #include "NetDevice.h"
 #include "../../net/src/errors.h"
 
 struct NetDeviceRep{
-    in_addr ipv4;
-    sockaddr_in6 ipv6;
-    ether_addr mac;
+    int ref_counter;
+    in_addr* ipv4;
+    in6_addr* ipv6;
+    ether_addr* mac;
     DeviceType type;    
     std::string vendor;
     bool changed;
@@ -22,8 +19,9 @@ struct NetDeviceRep{
     std::string MacToString();
     std::string TypeToString();
     std::string VendorToString();
-    NetDeviceRep() : changed(false)
+    NetDeviceRep() : ipv4(0), ipv6(0), mac(0), type(Unknown), changed(false)
     {
+        ref_counter = 1;
         cached_info = {
             {"Ip", ""},
             {"Ipv6", ""},
@@ -32,6 +30,10 @@ struct NetDeviceRep{
             {"Vendor", ""}
         }; 
     }
+    ~NetDeviceRep(){if(ipv4) delete ipv4; if(ipv6) delete ipv6; if(mac) delete mac;}
+private: 
+    NetDeviceRep(const NetDeviceRep&);
+    NetDeviceRep& operator=(const NetDeviceRep&);
 };
 
 typedef std::string (NetDeviceRep::*update_delegate)(void);
@@ -75,20 +77,24 @@ std::string NetDeviceRep::AddrToString(int family, const void *addr)
 
 std::string NetDeviceRep::IpToString()
 {
-    return AddrToString(AF_INET, &ipv4);
+    if(ipv4)
+        return AddrToString(AF_INET, ipv4);
+    else return "";
 }
 
 std::string NetDeviceRep::Ipv6ToString()
 {
-    return AddrToString(AF_INET6, &ipv6.sin6_addr);
+    if(ipv6)
+        return AddrToString(AF_INET6, ipv6);
+    else return "";
 }
 
 std::string NetDeviceRep::MacToString()
 {
     enum{max_mac_len = 18};
     char mac_str[max_mac_len] = {};
-    sprintf(mac_str, "%02x:%02x:%02x:%02x:%02x:%02x",mac.octet[0], 
-        mac.octet[1], mac.octet[2], mac.octet[3], mac.octet[4], mac.octet[5]);
+    sprintf(mac_str, "%02x:%02x:%02x:%02x:%02x:%02x",mac->octet[0], 
+        mac->octet[1], mac->octet[2], mac->octet[3], mac->octet[4], mac->octet[5]);
     return mac_str;
 }
 
@@ -99,3 +105,76 @@ std::string NetDeviceRep::TypeToString()
 }
 
 std::string NetDeviceRep::VendorToString(){return vendor;}
+
+bool NetDevice::SetIpv4(in_addr ip)
+{
+    //TODO: check on valid
+    if(!dev->ipv4)
+        dev->ipv4 = new in_addr;
+   *dev->ipv4 = ip; 
+   return true;
+}
+
+NetDevice::NetDevice()
+{
+    dev = new NetDeviceRep();
+}
+
+NetDevice::NetDevice(const NetDevice& c)
+{
+    c.dev->ref_counter++;
+    dev = c.dev;
+}
+
+NetDevice& NetDevice::operator=(const NetDevice& c)
+{
+    c.dev->ref_counter++;
+    if(--dev->ref_counter == 0) delete dev;
+    dev = c.dev;
+    return *this;
+}
+
+NetDevice::~NetDevice()
+{
+    if(--dev->ref_counter == 0)
+        delete dev;
+}
+
+bool NetDevice::SetIpv6(in6_addr ip)
+{
+    if(!dev->ipv6){
+        dev->ipv6 = new in6_addr;    
+    }
+    *dev->ipv6 = ip;
+    return dev->changed = true;
+}
+
+bool NetDevice::SetMac(ether_addr mac)
+{
+    if(!dev->mac){
+        dev->mac = new ether_addr;
+    }
+    *dev->mac = mac;
+    return dev->changed = true;
+}
+
+bool NetDevice::SetIpv4(const std::string& ip)
+{
+    if(!dev->ipv4)
+        dev->ipv4 = new in_addr;
+    const char* ip_c = ip.c_str(); 
+    inet_aton(ip_c, dev->ipv4); 
+    return dev->changed = true;
+}
+
+std::string NetDevice::GetIp() const
+{
+    if(dev->ipv4)
+        return inet_ntoa(*dev->ipv4);
+    else return "";
+}
+
+bool NetDevice::HasMac() const
+{
+    return dev->mac ? true : false;
+}
