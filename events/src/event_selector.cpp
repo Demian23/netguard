@@ -197,7 +197,6 @@ void EventSelector::Run(int timeout)
 {
     int ret;
     if(timeout < -1) return;
-    bool timeout_flag = timeout != 0 && timeout != -1;
     end_run = false;
     do{
         ret = poll(handlers.fds, handlers.nfds, timeout);
@@ -214,7 +213,7 @@ void EventSelector::Run(int timeout)
                 handlers[i]->HandleWrite();
             if((handlers[i] & POLLERR) || (handlers[i] & POLLNVAL))
                 handlers[i]->HandleError();
-            if(timeout_flag & handlers[i].IsTimeout())
+            if((ret == 0) && handlers[i].IsTimeout())
                 handlers[i]->HandleTimeout();
         }
         handlers.RemoveFreeHandlers();

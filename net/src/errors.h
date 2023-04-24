@@ -1,6 +1,6 @@
 #ifndef ERRORS_DEF
 #define ERRORS_DEF
-
+#include <errno.h>
 namespace errors{
     void Quit(const char *fmt, ...);
     void Msg(const char *fmt, ...);

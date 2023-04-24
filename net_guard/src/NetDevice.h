@@ -1,17 +1,19 @@
 #ifndef NET_DEVICE_DEF
 #define NET_DEVICE_DEF
 
-#include <unordered_map>
+#include <map>
 #include <netinet/in.h>
 #include <netinet/if_ether.h>
 #include <arpa/inet.h>
 #include <string>
+#include <set>
+#include <vector>
+
 struct NetDeviceRep;
 enum DeviceType{
-    Host = 0, Router = 1, Unknown = 2
+    Host = 0, Router = 1, Unknown = 2, OwnHost = 3, Gateway = 4
 };
-
-typedef std::unordered_map<std::string, std::string> dev_info;
+typedef std::map<std::string, std::string> dev_info;
 
 class NetDevice{
 public:
@@ -25,12 +27,21 @@ public:
     bool SetMac(const std::string& mac);
     bool SetType(DeviceType type);
     std::string GetIp() const;
+    void GetIp(sockaddr_in& addr) const;
+    void GetMac(ether_addr& mac) const;
     bool HasMac() const;
+    DeviceType GetType() const;
     ~NetDevice();
     NetDevice(const NetDevice& c);
     NetDevice& operator=(const NetDevice& c);
 private:
     NetDeviceRep* dev;
+};
+void print(const NetDevice& dev);
+struct Info{
+    std::set<std::string> ip_set;
+    std::string interface;
+    std::vector<NetDevice>& devices;
 };
 
 #endif // !NET_DEVICE_DEF

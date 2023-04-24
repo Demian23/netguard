@@ -11,14 +11,13 @@ public:
     virtual void Act();
     virtual ~Pinger();
     void UpdateHandlerEvents(FdHandler* h);
+    void GetWrongIdPacket(char *msg, ssize_t len);
 private:
     const std::set<std::string>& ping_ips;
     std::set<std::string>::const_iterator it;
-    std::vector<std::string> real_ip;
     SendEcho** send_handlers; 
-    RecvEcho** recieve_hanlders; 
     int* send_icmp_sd;
-    int* recieve_icmp_sd; 
+    RecvEcho* reciver;
     int poll_size;
     int id;
     bool HandlersDone()const;

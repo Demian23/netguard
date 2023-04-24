@@ -6,7 +6,6 @@
 
 class ARPHandler : public FdHandler{
 private:
-    EventSelector &sel;
     ARP::arp_pair pair;
     sockaddr_in ip;
     ether_addr mac;
@@ -17,7 +16,7 @@ private:
     bool find;
 public:
     ARPHandler(sockaddr_in a_ip, ether_addr a_mac, const std::string& dest, 
-        const std::string& a_interface, EventSelector &a_sel);
+        const std::string& a_interface);
     virtual ~ARPHandler();
     virtual int HandleRead();    
     virtual int HandleError();
@@ -28,8 +27,8 @@ public:
 };
 
 ARPHandler::ARPHandler(sockaddr_in a_ip, ether_addr a_mac, const std::string& dest, 
-    const std::string& a_interface, EventSelector &a_sel)
-    : FdHandler(-1, true), sel(a_sel), ip(a_ip), mac(a_mac), interface(a_interface), 
+    const std::string& a_interface)
+    : FdHandler(-1, true), ip(a_ip), mac(a_mac), interface(a_interface), 
     dest_ip(dest), find(false)
 {
     ARP::set_bpf_arp(fd, buffer_length, interface.c_str());
@@ -78,22 +77,50 @@ int ARPHandler::HandleTimeout()
             && dest_ip == inet_ntoa(pair.ip.sin_addr);
         counter++;
     }while(!find && counter < 5);
-    sel.EndRun();
     return 0;
 }
 
-Arper::Arper(Scheduler& m) : ScheduledEvent(m)
+Arper::Arper(Scheduler& m, const std::string& a_in) : ScheduledEvent(m), 
+    interface(a_in), init(false)
 {
     std::vector<NetDevice> temp = m.GetDevices(); 
     for(std::vector<NetDevice>::iterator it = temp.begin(); it != temp.end();
         it++){
-        if(!it->HasMac()){
-            updated_dev.push_back(*it);
+        if(it->GetType() == OwnHost){
+           own_dev = *it; 
         }
     }
 }
 
+void Arper::Init()
+{
+    std::vector<NetDevice> temp = master.GetDevices(); 
+    for(std::vector<NetDevice>::iterator it = temp.begin(); it != temp.end();
+            it++){
+        if(!it->HasMac()){
+            updated_dev.push_back(*it);
+        }
+    }
+    init = true;
+}
 void Arper::Act()
 {
-
+    if(!init)
+        Init();
+    if(!updated_dev.empty() && current_index != updated_dev.size()){
+        sockaddr_in own_ip;
+        ether_addr own_mac;
+        own_dev.GetIp(own_ip);    
+        own_dev.GetMac(own_mac);
+        ARPHandler arp(own_ip, own_mac, updated_dev[current_index].GetIp(),
+            interface);
+        arp.HandleTimeout();
+        if(arp.Find()){
+            updated_dev[current_index].SetMac(arp.GetPair().mac);
+        }
+        current_index++;
+    }else{
+        master.EndNormalScheduledEvent();
+    }
+    
 }

@@ -1,7 +1,7 @@
-
-
 #include "NetDevice.h"
 #include "../../net/src/errors.h"
+#include "../../net/src/mac.h"
+#include <netdb.h>
 
 struct NetDeviceRep{
     int ref_counter;
@@ -10,6 +10,7 @@ struct NetDeviceRep{
     ether_addr* mac;
     DeviceType type;    
     std::string vendor;
+    std::string name;
     bool changed;
     dev_info cached_info;
     void FillInfo();
@@ -19,14 +20,17 @@ struct NetDeviceRep{
     std::string MacToString();
     std::string TypeToString();
     std::string VendorToString();
+    std::string NameToString();
     NetDeviceRep() : ipv4(0), ipv6(0), mac(0), type(Unknown), changed(false)
     {
+        type = Host;
         ref_counter = 1;
         cached_info = {
+            {"Type", ""}, 
+            {"Name", ""}, 
             {"Ip", ""},
             {"Ipv6", ""},
             {"MAC", ""}, 
-            {"Type", ""}, 
             {"Vendor", ""}
         }; 
     }
@@ -37,11 +41,12 @@ private:
 };
 
 typedef std::string (NetDeviceRep::*update_delegate)(void);
-static std::unordered_map<std::string, update_delegate> update_key_value= {
+static std::map<std::string, update_delegate> update_key_value= {
+    {"Type", &NetDeviceRep::TypeToString},
+    {"Name", &NetDeviceRep::NameToString},
     {"Ip", &NetDeviceRep::IpToString},
     {"Ipv6", &NetDeviceRep::Ipv6ToString},
     {"MAC", &NetDeviceRep::MacToString},
-    {"Type", &NetDeviceRep::TypeToString},
     {"Vendor", &NetDeviceRep::VendorToString},
 };
 
@@ -100,11 +105,12 @@ std::string NetDeviceRep::MacToString()
 
 std::string NetDeviceRep::TypeToString()
 {
-    static const char*const types_str[] = {"Host", "Router", "Unknown"};
+    static const char*const types_str[] = {"Host", "Router", "Unknown", "Own host", "Gateway"};
     return types_str[type];
 }
 
 std::string NetDeviceRep::VendorToString(){return vendor;}
+std::string NetDeviceRep::NameToString(){return name;}
 
 bool NetDevice::SetIpv4(in_addr ip)
 {
@@ -112,6 +118,11 @@ bool NetDevice::SetIpv4(in_addr ip)
     if(!dev->ipv4)
         dev->ipv4 = new in_addr;
    *dev->ipv4 = ip; 
+   sockaddr_in ip_addr = {.sin_family = AF_INET, .sin_addr = *dev->ipv4};
+    char hostname[NI_MAXHOST] = {};
+    getnameinfo(reinterpret_cast<const sockaddr *>(&ip_addr), sizeof(sockaddr_in), 
+            hostname, NI_MAXHOST, 0, 0, 0);
+    dev->name = hostname;
    return true;
 }
 
@@ -155,16 +166,18 @@ bool NetDevice::SetMac(ether_addr mac)
         dev->mac = new ether_addr;
     }
     *dev->mac = mac;
+    MAC::mac_vendor v = MAC::vendor(mac);     
+    if(v.find)
+        dev->vendor = std::string(v.info[0]) + "\nPrivate: " + v.info[1] + ", Block type: " 
+            + v.info[2] + ", Last update: " + v.info[3];
     return dev->changed = true;
 }
 
 bool NetDevice::SetIpv4(const std::string& ip)
 {
-    if(!dev->ipv4)
-        dev->ipv4 = new in_addr;
-    const char* ip_c = ip.c_str(); 
-    inet_aton(ip_c, dev->ipv4); 
-    return dev->changed = true;
+    in_addr tmp;
+    inet_aton(ip.c_str(), &tmp); 
+    return SetIpv4(tmp);
 }
 
 std::string NetDevice::GetIp() const
@@ -174,7 +187,42 @@ std::string NetDevice::GetIp() const
     else return "";
 }
 
+void NetDevice::GetIp(sockaddr_in& addr) const
+{
+    if(dev->ipv4){
+        addr.sin_family = AF_INET;
+        addr.sin_addr = *dev->ipv4;
+    }
+}
+
+void NetDevice::GetMac(ether_addr &mac) const
+{
+    if(dev->mac)
+        mac = *dev->mac;
+}
+
 bool NetDevice::HasMac() const
 {
     return dev->mac ? true : false;
+}
+
+DeviceType NetDevice::GetType() const
+{
+    return dev->type;
+}
+
+bool NetDevice::SetType(DeviceType type)
+{
+    dev->type = type;
+    return dev->changed = true;
+}
+void print(const NetDevice& dev)
+{
+    const dev_info& info = dev.GetInfo();
+    dev_info::const_iterator it = info.begin();
+    for(;it != info.end(); it++){
+        if(!it->second.empty())
+            printf("%s: %s\n", it->first.c_str(), it->second.c_str());
+    }
+    putchar('\n');
 }

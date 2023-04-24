@@ -85,7 +85,8 @@ ssize_t recv_reply(int sockfd, struct msghdr *msg)
     msg->msg_flags = 0; 
     ssize_t res = recvmsg(sockfd, msg, 0);
     if(res == -1){
-        errors::Sys("recvmsg mistake");
+        if(errno != EAGAIN)
+            errors::Sys("recvmsg mistake");
     }
     return res;
 }
@@ -109,21 +110,22 @@ icmp* is_icmp_msg(char* msg, int size)
     return icmp;
 }
 
-bool process_reply(int sockfd, char *ptr, ssize_t len, int id)
+Errors get_echo(char *ptr, ssize_t len, in_addr& src_ip)
 {
-    bool res = false;
+    Errors res;
     icmp* icmp_packet = is_icmp_msg(ptr, len);
     if(icmp_packet != 0){
-        bool is_equal_id = icmp_packet->icmp_id == id;
-        if(icmp_packet->icmp_type == ICMP_ECHOREPLY && is_equal_id){
-            res = true;
+        if(icmp_packet->icmp_type == ICMP_ECHOREPLY){
+            ip* ip_packet = reinterpret_cast<ip *>(ptr);
+            src_ip = ip_packet->ip_src;
+            res = Allright;
         } else {
-            if(!is_equal_id)
-                errors::Msg("Not equal id");
-            else 
-                errors::Msg("not ECHO_REPLY");
+            res = NotEcho;
+            errors::Msg("not ECHO_REPLY");
         }
-    } 
+    } else {
+        res = NotIcmp;
+    }
     return res;
 }
 
@@ -154,16 +156,12 @@ bool get_exceed_node(int fd, char* ptr, ssize_t len, int id, in_addr& res_addr)
     bool res = false;
     icmp* icmp_packet = is_icmp_msg(ptr, len);
     if(icmp_packet != 0){
-        bool is_equal_id = icmp_packet->icmp_id == id;
-        if(icmp_packet->icmp_type == ICMP_ECHOREPLY && is_equal_id){
+        if(icmp_packet->icmp_type == ICMP_TIMXCEED){
             ip* ip_packet = reinterpret_cast<struct ip *>(ptr);
             res_addr = ip_packet->ip_src;
             res = true;
         } else {
-            if(!is_equal_id)
-                errors::Msg("Not equal id");
-            else 
-                errors::Msg("not ECHO_REPLY");
+            errors::Msg("not ECHO_REPLY");
         }
     } 
     return res;

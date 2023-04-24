@@ -6,12 +6,18 @@
 class ARPHandler;
 class Arper : public ScheduledEvent{
 public:
-    Arper(Scheduler& m);
+    Arper(Scheduler& m, const std::string& a_in);
     virtual void Act();
-    virtual ~Arper();
+    virtual ~Arper(){}
     void UpdateHandlerEvents(FdHandler* h);
 private:
     std::vector<NetDevice> updated_dev;
+    const std::string& interface;
+    NetDevice own_dev;
+    int current_index;
+    bool init;
+
+    void Init();
 };
 
 #endif 

@@ -2,6 +2,7 @@
 #include "../../net/src/errors.h"
 #include "../../net/src/host_addr.h"
 #include "../../net/src/icmp.h"
+#include <fcntl.h>
 
 class SendEcho : public FdHandler{
 private:
@@ -20,19 +21,16 @@ public:
 
 class RecvEcho: public FdHandler{
 private:
-    Pinger& father;
+    std::set<std::string> ips;
     msghdr msg;
-    bool recieved;
-    int timeout_counter;
-    int id;
 public:
-    RecvEcho(int a_fd, bool own, int a_id, Pinger& f);
+    RecvEcho(int a_fd, bool own);
     virtual int HandleError();
     virtual int HandleRead();
     virtual int HandleWrite();
     virtual int HandleTimeout();
-    bool Exists() const {return recieved;}
-    virtual ~RecvEcho(){} //wrong need to free at least buffers in msg
+    const std::set<std::string>& GetIps() const{return ips;}
+    virtual ~RecvEcho(){}
 };
 
 
@@ -56,23 +54,23 @@ int SendEcho::HandleWrite()
 {
     sockaddr_in dest_addr = host_addr::set_addr(dest_ip.c_str(), AF_INET);
     ICMP::send_echo(fd, id, 0, &dest_addr, sizeof(dest_addr));
-    errors::Msg("Send");
     SetEvents(None);
     father.UpdateHandlerEvents(this);
+    ExplicitlyEnd();
     return 0;
 }
 
 int SendEcho::HandleTimeout()
 {
-    errors::Msg("Try to timeout from SendEcho");
     return -1;
 }
 
-
-RecvEcho::RecvEcho(int a_fd, bool own, int a_id, Pinger& f)
-    : FdHandler(a_fd, own), father(f), recieved(false), id(a_id)
+RecvEcho::RecvEcho(int a_fd, bool own)
+    : FdHandler(a_fd, own)
 {
-   memset(&msg, 0, sizeof(msg)); 
+    memset(&msg, 0, sizeof(msg)); 
+    int flags = fcntl(fd, F_GETFL);
+    fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 }
 
 int RecvEcho::HandleError()
@@ -83,14 +81,19 @@ int RecvEcho::HandleError()
 
 int RecvEcho::HandleRead()
 {
-    ssize_t len = ICMP::recv_reply(fd , &msg);
-    if(len > 0){
-        if(ICMP::process_reply(fd, reinterpret_cast<char *>(msg.msg_iov->iov_base), len, id))
-            recieved = true;
-        errors::Msg("Read");
-        SetEvents(None);
-        father.UpdateHandlerEvents(this);
-    }
+    bool end_read;
+    do{
+        ssize_t len = ICMP::recv_reply(fd , &msg);
+        end_read = len == -1;
+        if(!end_read){
+            in_addr ip;
+            ICMP::Errors result = ICMP::get_echo(
+                    reinterpret_cast<char *>(msg.msg_iov->iov_base),len, ip);
+            if(result == ICMP::Allright)
+                ips.insert(inet_ntoa(ip));
+        }
+        delete[] msg.msg_iov; delete[] (char*) msg.msg_control;
+    }while(!end_read);
     return 0;
 }
 
@@ -102,12 +105,7 @@ int RecvEcho::HandleWrite()
 
 int RecvEcho::HandleTimeout()
 {
-    timeout_counter++;
-    if(timeout_counter > 3){
-        SetEvents(None);
-        father.UpdateHandlerEvents(this);
-    }
-    return 0;
+    return -1;
 }
 
 Pinger::Pinger(Scheduler& m, const std::set<std::string>& ip_set)
@@ -116,17 +114,13 @@ Pinger::Pinger(Scheduler& m, const std::set<std::string>& ip_set)
     poll_size = 8; // TODO:make it adaptive to size of network
     it = ping_ips.begin(); 
     send_icmp_sd= new int[poll_size];
-    recieve_icmp_sd = new int[poll_size];
     send_handlers = new SendEcho*[poll_size]; 
-    recieve_hanlders = new RecvEcho*[poll_size];
 }
 
 Pinger::~Pinger()
 {
     delete[] send_handlers;
-    delete[] recieve_hanlders;
     delete[] send_icmp_sd;
-    delete[] recieve_icmp_sd;
 }
 
 void Pinger::Act()
@@ -134,27 +128,20 @@ void Pinger::Act()
     //first check if we can create new send/echo 
     //no, than skeep
     if(send_handlers[0] != 0){
-        if(HandlersDone()){
-            GainResults();
-            if(!CreateHandlers()){
-                // Update devices vector
-                UpdateDevices();            
-                master.EndNormalScheduledEvent();
-            }
+        if(!CreateHandlers()){
+            UpdateDevices();            
+            master.EndNormalScheduledEvent();
         }
     } else {
         CreateHandlers();
+        int reciver_fd;
+        if(ICMP::make_icmp_socket(reciver_fd))
+            reciver = new RecvEcho(reciver_fd, true);
+        else 
+            errors::Sys("Pinger::Act");
+        reciver->SetEvents(FdHandler::InEvent + FdHandler::ErrEvent);
+        master.AddHandler(reciver);
     }
-}
-
-bool Pinger::HandlersDone() const
-{
-    bool res = true;
-    for(int i = 0; res && i < poll_size; i++){
-        res &= send_handlers[i]->GetEvents() == SendEcho::None;
-        res &= recieve_hanlders[i]->GetEvents() == RecvEcho::None;
-    }
-    return res;
 }
 
 bool Pinger::CreateHandlers()
@@ -162,16 +149,12 @@ bool Pinger::CreateHandlers()
     bool res = false;
     if(it != ping_ips.end()){
         for(int i = 0; it != ping_ips.end() && i < poll_size; it++, i++){
-            if(!ICMP::make_icmp_socket(send_icmp_sd[i])
-            || !ICMP::make_icmp_socket(recieve_icmp_sd[i]))
+            if(!ICMP::make_icmp_socket(send_icmp_sd[i]))
                 errors::Sys("ICMP socket not created.");
             send_handlers[i] = new SendEcho(send_icmp_sd[i], true, 
                 *it, id, *this);
-            recieve_hanlders[i] = new RecvEcho(recieve_icmp_sd[i], true, id, *this);
             send_handlers[i]->SetEvents(FdHandler::OutEvent + FdHandler::ErrEvent);
-            recieve_hanlders[i]->SetEvents(FdHandler::Timeout + FdHandler::InEvent + FdHandler::ErrEvent);
             master.AddHandler(send_handlers[i]);
-            master.AddHandler(recieve_hanlders[i]);
             id = ICMP::get_id();
         }
         res = true;
@@ -184,32 +167,18 @@ void Pinger::UpdateHandlerEvents(FdHandler *h)
     master.UpdateHandlerEvents(h);
 }
 
-void Pinger::GainResults()
-{
-    for(int i = 0; i < poll_size; i++){
-        if(recieve_hanlders[i]->Exists()){
-            real_ip.push_back(send_handlers[i]->GetDestIp());
-        }
-        recieve_hanlders[i]->ExplicitlyEnd();
-        send_handlers[i]->ExplicitlyEnd();
-    }
-}
-
 void Pinger::UpdateDevices()
 {
     std::vector<NetDevice>& temp = master.GetDevices();
-    bool exists;
-    for(int i = 0; i < real_ip.size(); i++){ 
-        exists = false;
-        for(int j = 0; j < temp.size(); j++){
-            if(real_ip[i] == temp[j].GetIp()){
-                exists = true;
-                break;
-            }
-        }
-        if(!exists){
-            NetDevice new_dev; new_dev.SetIpv4(real_ip[i]);
-            temp.push_back(new_dev);
-        }
+    const std::set<std::string>& ips_set = reciver->GetIps();
+    std::set<std::string>::const_iterator ips_it = ips_set.begin();
+    for(;ips_it != ips_set.end(); ips_it++){
+        NetDevice new_dev; 
+        new_dev.SetIpv4(*ips_it);
+        temp.push_back(new_dev);
     }
+    reciver->SetEvents(FdHandler::None);
+    UpdateHandlerEvents(reciver);
+    reciver->ExplicitlyEnd();
 }
+
