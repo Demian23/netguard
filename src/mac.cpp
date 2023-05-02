@@ -1,11 +1,11 @@
-#include "mac.h"
-#include "errors.h"
+#include "../include/mac.h"
+#include "../include/errors.h"
 #include <cstdio>
 #include <cstring>
 
 namespace MAC{
     enum{first_part_size = 8};    
-const char *vendors_file = "./net_guard/aux_files/mac-vendors-export.csv";
+const char *vendors_file = "../resources/mac-vendors-export.csv";
 
 int check_record(mac_vendor *arr, char *buff, int len);
 mac_vendor vendor(const ether_addr& mac)

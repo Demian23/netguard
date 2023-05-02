@@ -1,10 +1,10 @@
-#include "../../events/src/scheduler.h"
-#include "../../events/src/pinger.h"
-#include "../../events/src/arper.h"
-#include "../../events/src/router.h"
-#include "../../net/src/host_addr.h"
-#include "../../net/src/ip.h"
-#include "../../net/src/errors.h"
+#include "../include/scheduler.h"
+#include "../include/pinger.h"
+#include "../include/arper.h"
+#include "../include/router.h"
+#include "../include/host_addr.h"
+#include "../include/ip.h"
+#include "../include/errors.h"
 
 
 void get_cmdl_args(int argc, char **argv, std::string& interface, ether_addr &ownmac, sockaddr_in &ip,

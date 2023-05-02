@@ -1,7 +1,7 @@
-#include "scheduler.h"
-#include "pinger.h"
-#include "arper.h"
-#include "router.h"
+#include "../include/scheduler.h"
+#include "../include/pinger.h"
+#include "../include/arper.h"
+#include "../include/router.h"
 
 void Scheduler::EndNormalScheduledEvent()
 {

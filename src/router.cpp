@@ -1,5 +1,5 @@
-#include "router.h"
-#include "../../net/src/icmp.h"
+#include "../include/router.h"
+#include "../include/icmp.h"
 #include <unistd.h>
 
 void FindGate::Act()

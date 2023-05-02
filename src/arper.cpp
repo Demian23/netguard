@@ -1,8 +1,8 @@
-#include "arper.h"
+#include "../include/arper.h"
 
-#include "fd_handlers.h"
-#include "../../net/src/arp.h"
-#include "../../net/src/errors.h"
+#include "../include/fd_handlers.h"
+#include "../include/arp.h"
+#include "../include/errors.h"
 
 class ARPHandler : public FdHandler{
 private:

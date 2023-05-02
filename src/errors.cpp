@@ -1,4 +1,4 @@
-#include "errors.h"
+#include "../include/errors.h"
 
 #include <syslog.h>
 #include <stdarg.h>

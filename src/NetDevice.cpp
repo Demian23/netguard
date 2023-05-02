@@ -1,6 +1,6 @@
-#include "NetDevice.h"
-#include "../../net/src/errors.h"
-#include "../../net/src/mac.h"
+#include "../include/NetDevice.h"
+#include "../include/errors.h"
+#include "../include/mac.h"
 #include <netdb.h>
 
 struct NetDeviceRep{

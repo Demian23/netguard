@@ -5,8 +5,8 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include "icmp.h"
-#include "errors.h"
+#include "../include/icmp.h"
+#include "../include/errors.h"
 
 namespace ICMP{
 

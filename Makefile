@@ -1,21 +1,30 @@
-all:
-	$(MAKE) -C net 
-	$(MAKE) -C events
-	$(MAKE) -C authentication
-	$(MAKE) -C net_guard
-test:
-	$(MAKE) -C net 
-	$(MAKE) -C events
-	$(MAKE) -C authentication
-	$(MAKE) -C tests
-release:
-	$(MAKE) release -C net 
-	$(MAKE) release -C events
-	$(MAKE) release -C authentication
-	$(MAKE) release -C net_guard
+CPPC=g++
+CPPFLAGS=-Wall -g -std=c++11
+SRC=src
+OBJ=build/obj
+BIN_DIR=build/bin
+BIN=$(BIN_DIR)/netguard
+SRCS=$(wildcard $(SRC)/*.cpp)
+OBJS=$(patsubst $(SRC)/%.cpp, $(OBJ)/%.o, $(SRCS))
+
+all:$(OBJ) $(BIN_DIR) $(BIN)
+
+release:CPPFLAGS= -Wall -O1 -std=c++11
+release: clean
+release:$(OBJ) $(BIN_DIR) $(BIN)
+
+$(BIN): $(OBJS)
+	$(CPPC) $(CPPFLAGS) $^ -o $@ 
+
+$(OBJ)/%.o: $(SRC)/%.cpp
+	$(CPPC) $(CPPFLAGS) -c $< -o $@ 
+
+$(OBJ):
+	mkdir -p $@
+
+$(BIN_DIR):
+	mkdir -p $@
+
 clean:
-	$(MAKE) clean -C net
-	$(MAKE) clean -C events
-	$(MAKE) clean -C authentication
-	$(MAKE) clean -C tests
-	$(MAKE) clean -C net_guard
+	$(RM) $(OBJ)/*
+	$(RM) -rf $(BIN_DIR)/* 

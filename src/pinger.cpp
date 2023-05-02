@@ -1,7 +1,7 @@
-#include "pinger.h"
-#include "../../net/src/errors.h"
-#include "../../net/src/host_addr.h"
-#include "../../net/src/icmp.h"
+#include "../include/pinger.h"
+#include "../include/errors.h"
+#include "../include/host_addr.h"
+#include "../include/icmp.h"
 #include <fcntl.h>
 
 class SendEcho : public FdHandler{

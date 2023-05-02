@@ -1,8 +1,8 @@
 #ifndef PINGER_DEF
 #define PINGER_DEF
 
-#include "scheduler.h"
-#include "../../net/src/ip.h"
+#include "../include/scheduler.h"
+#include "../include/ip.h"
 
 class SendEcho; class RecvEcho;
 class Pinger : public ScheduledEvent{

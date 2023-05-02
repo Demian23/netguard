@@ -1,9 +1,9 @@
 #ifndef SCHEDULER_DEF
 #define SCHEDULER_DEF
 
-#include "event_selector.h"
-#include "fd_handlers.h"
-#include "../../net_guard/src/NetDevice.h"
+#include "../include/event_selector.h"
+#include "../include/fd_handlers.h"
+#include "../include/NetDevice.h"
 #include <queue>
 #include <set>
 #include <string>

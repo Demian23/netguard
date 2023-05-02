@@ -8,8 +8,8 @@
 #include <net/if.h>
 #include <string.h>
 
-#include "arp.h"
-#include "errors.h"
+#include "../include/arp.h"
+#include "../include/errors.h"
 
 namespace ARP{
 enum{arp_timeout = 50000};

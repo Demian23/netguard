@@ -4,8 +4,8 @@
 #include <arpa/inet.h>
 #include <string.h>
 
-#include "host_addr.h"
-#include "errors.h"
+#include "../include/host_addr.h"
+#include "../include/errors.h"
 
 namespace host_addr{
 
