@@ -2,7 +2,7 @@
 #include "../include/icmp.h"
 #include <unistd.h>
 
-void FindGate::Act()
+bool FindGate::Execute()
 {
     int fd, id = -1;
     msghdr msg; in_addr res;
@@ -14,14 +14,13 @@ void FindGate::Act()
     close(fd);
     if(flag){
         std::string res_str = inet_ntoa(res);
-        std::vector<NetDevice>& temp = master.GetDevices();
+        std::vector<NetDevice>& temp = master.GetDevStat().devices;
         for(int i = 0; i < temp.size(); i++)
             if(temp[i].GetIp() == res_str){
                 temp[i].SetType(Gateway);
                 break;
             }
-        master.EndNormalScheduledEvent();
     }
-
+    return flag;
 }
 

@@ -3,21 +3,12 @@
 
 
 #include "../include/scheduler.h"
-class ARPHandler;
-class Arper : public ScheduledEvent{
+class Arper : public Task{
 public:
-    Arper(Scheduler& m, const std::string& a_in);
-    virtual void Act();
-    virtual ~Arper(){}
-    void UpdateHandlerEvents(FdHandler* h);
+    Arper(Scheduler& m);
+    bool Execute() override;
 private:
-    std::vector<NetDevice> updated_dev;
-    const std::string& interface;
-    NetDevice own_dev;
-    int current_index;
-    bool init;
-
-    void Init();
+    Scheduler& master;
 };
 
 #endif 

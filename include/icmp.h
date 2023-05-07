@@ -16,6 +16,7 @@ namespace ICMP{
     bool send_ttl_1(int& resfd, int& id);
     bool get_exceed_node(int fd, char* ptr, ssize_t len, int id, 
         in_addr& res_addr);
+    uint16_t calc_checksum(uint16_t *addr, int len);
 
 };
 

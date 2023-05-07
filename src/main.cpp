@@ -5,6 +5,7 @@
 #include "../include/host_addr.h"
 #include "../include/ip.h"
 #include "../include/errors.h"
+#include <algorithm>
 
 
 void get_cmdl_args(int argc, char **argv, std::string& interface, ether_addr &ownmac, sockaddr_in &ip,
@@ -46,10 +47,18 @@ int main(int argc, char **argv)
     devices.push_back(own_device);
     std::set<std::string> ip_set = IP::all_net_ipv4(net, 0, IP::ip_amount(mask_prefix));
     ip_set.erase(inet_ntoa(ip.sin_addr));
-    Info inf = {.ip_set = ip_set, .interface = interface, .devices = devices};
+    NetInfo inf = {.ip_set = ip_set, .interface = interface, .devices = devices};
     EventSelector selector;
-    Scheduler* scheduler = new Scheduler(2, selector, inf);
-    selector.Add(scheduler);
-    selector.Run(500);
+    Scheduler* scheduler = new Scheduler(selector, inf);
+    Pinger* pinger = new Pinger(*scheduler, ip_set);
+    Arper* arper = new Arper(*scheduler);
+    FindGate* gate = new FindGate(*scheduler);
+    scheduler->AddOrdinaryTask(pinger);
+    scheduler->AddOrdinaryTask(arper);
+    scheduler->AddOrdinaryTask(gate);
+    selector.AddEvent(scheduler);
+    selector.StartSelecting(500);
+    std::for_each(devices.begin(), devices.end(), [](NetDevice e){print(e);});
     return 0;
 }
+

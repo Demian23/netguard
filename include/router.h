@@ -2,11 +2,12 @@
 #define ROUTER_DEF
 
 #include "scheduler.h"
-class FindGate: public ScheduledEvent{
+class FindGate: public Task{
 public:
-    FindGate(Scheduler& m) : ScheduledEvent(m){}
-    virtual void Act();
-    virtual ~FindGate(){}
+    FindGate(Scheduler& m):master(m){}
+    bool Execute()override;
+private:
+    Scheduler& master;
 };
 
 #endif // !ROUTER_DEF

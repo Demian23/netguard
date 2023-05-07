@@ -38,7 +38,8 @@ private:
     NetDeviceRep* dev;
 };
 void print(const NetDevice& dev);
-struct Info{
+
+struct NetInfo{
     std::set<std::string> ip_set;
     std::string interface;
     std::vector<NetDevice>& devices;

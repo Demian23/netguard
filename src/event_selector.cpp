@@ -1,226 +1,110 @@
-#include "../include/event_selector.h"
-#include <fcntl.h>
-#include <unistd.h>
+#include <algorithm>
 #include <errno.h>
-#include <sys/wait.h>
 
-//      EventHandler
+#include "../include/event_selector.h"
 
-EHCursor EventHandler::operator[](FdHandler *h)
+void EventSelector::AddEvent(IEvent *e)
 {
-    return (*this)[FindIndex(h)];
+    //consistency
+    int index = polling.add_fd(e->GetDescriptor(), e->ListeningEvents()); 
+    if(index >= events.size())
+        events.resize(index + 1);
+    events[index] = e;
 }
-
-unsigned EventHandler::FindIndex(FdHandler *h)
+void EventSelector::EndSelecting(){end_selecting = true;}
+void EventSelector::DeleteEvent(IEvent *e)
 {
-    int i;
-    for(i = 0; i < nfds; i++)
-        if(fds[i].fd == h->GetFd())
-            break;
-    return i == nfds ? -1 : i;
+    int index = polling.delete_fd(e->GetDescriptor());
+    delete events[index];
+    events[index] = 0;
 }
-
-void EventHandler::ExpandFds()
+EventSelector::~EventSelector(){std::for_each(events.begin(), events.end(), [](IEvent* e){if(e)delete e;});}
+void EventSelector::StartSelecting(int timeout)
 {
-    unsigned new_size = fds_size > 0 ? fds_size << 1 : default_size;
-    pollfd *new_fds = new pollfd[new_size];
-    bool *new_timeouts = new bool[new_size];
-    int i;
-    for(i = 0; i < fds_size; i++){
-        new_fds[i].fd = fds[i].fd;
-        new_fds[i].events = fds[i].events;
-        new_fds[i].revents = fds[i].revents;
-        new_timeouts[i] = timeouts[i];
-    }
-    for(int j = i; j < new_size; j++){
-        FreeResources(j, new_fds, new_timeouts);
-    }
-    delete[] fds;
-    delete[] timeouts;
-    fds_size = new_size;
-    fds = new_fds;
-    timeouts = new_timeouts;
-}
-
-void EventHandler::RemoveFreeHandlers()
-{
-    Item *temp_p = p;
-    while(temp_p != 0){
-        if(temp_p->h->GetCond() == temp_p->h->done){
-            Item* save_p = temp_p;
-            temp_p = temp_p->next;
-            RemoveHandler(save_p->index);
-        } else 
-            temp_p = temp_p->next;
-
-    }
-}
-
-unsigned EventHandler::FindFreeIndex()
-{
-    for(int i = 0; i < fds_size; i++){
-       if(fds[i].fd == free) 
-           return i;
-    }
-    unsigned res = fds_size;
-    ExpandFds();
-    return res;
-}
-
-int EventHandler::EventsToInt(FdHandler *h)
-{
-    int result = 0;
-    result |= h->GetEvents() & h->InEvent ? POLLIN : 0;
-    result |= h->GetEvents() & h->OutEvent ? POLLOUT : 0;
-    result |= h->GetEvents() & h->ErrEvent ? POLLERR : 0;
-    return result;
-}
-
-bool EventHandler::EventsToTimeout(FdHandler *h)
-{
-    return h->GetEvents() & h->Timeout ? true : false;
-}
-
-bool EventHandler::AddHandler(FdHandler *new_h)
-{
-    RemoveFreeHandlers();
-    if(new_h == 0)
-        return false;
-    if(p == 0){
-        p = new Item(new_h, 0); 
-        fds[0].fd = new_h->GetFd();
-        fds[0].events = EventsToInt(new_h);
-        fds[0].revents = 0;
-        timeouts[0] = EventsToTimeout(new_h);
-        nfds = 1;
-    } else {
-        unsigned index = FindFreeIndex();
-        Item *new_item = new Item(new_h, index); 
-        new_item->next = p;
-        p = new_item;
-        fds[index].fd = new_h->GetFd();
-        fds[index].events = EventsToInt(new_h);
-        fds[index].revents = 0;
-        timeouts[index] = EventsToTimeout(new_h);
-        nfds++;
-    }    
-    return true;
-}
-
-EHCursor EventHandler::operator[](unsigned int index)
-{
-    Item *temp_p;
-    for(temp_p = p; temp_p != 0 && temp_p->index != index; temp_p = temp_p->next);
-    if(temp_p)
-        return EHCursor(*this, temp_p);
-    else 
-        return EHCursor(*this);
-}
-void EventHandler::FreeResources(int index, pollfd *arr, bool *t)
-{
-    arr[index].fd = free;
-    arr[index].events = 0;
-    arr[index].revents = 0;
-    t[index] = false;
-}
-bool EventHandler::RemoveHandler(unsigned int index)
-{
-   Item *temp_p = p, *prev = 0; 
-   if(temp_p == 0)
-       return false;
-   if(temp_p->index == index){
-        nfds--;
-        p = p->next;
-        FreeResources(index, fds, timeouts);
-        delete temp_p;
-        return true;
-   }
-   for(prev = temp_p, temp_p = temp_p->next; temp_p != 0 && 
-           temp_p->index != index; prev = temp_p, temp_p = temp_p->next){}
-    if(temp_p == 0)
-        return false;
-    nfds--;
-    prev->next = temp_p->next;
-    FreeResources(index, fds, timeouts);
-    delete temp_p;
-    return true;
-}
-
-EventHandler::~EventHandler()
-{
-    if(fds != 0)
-        delete[] fds;
-    Item *temp_p;
-    while(p != 0){
-        temp_p = p; 
-        p = p->next;
-        delete temp_p;
-    }
-}
-
-//          EHCursor
-
-int EHCursor::operator&(int val)
-{
-    if(item == 0)
-        return 0;
-    return eh.fds[index].revents & val;
-}
-
-void EHCursor::ResetEvents()
-{
-    if(-1 != index){
-        eh.fds[index].events = eh.EventsToInt(item->h); 
-        eh.timeouts[index] = eh.EventsToTimeout(item->h);
-        eh.fds[index].revents = 0;
-    }
-}
-
-void EHCursor::ResetFd(int a_fd, bool a_own, int a_events)
-{
-    if(-1 != index){
-        item->h->ChangeFd(a_fd, a_own, a_events);
-        ResetEvents();
-        eh.fds[index].fd = a_fd;
-    }
-}
-
-
-//          EventSelector
-
-void EventSelector::UpdateEvents(FdHandler *h)
-{
-    handlers[h].ResetEvents();
-}
-
-void EventSelector::Run(int timeout)
-{
-    int ret;
     if(timeout < -1) return;
-    end_run = false;
+    end_selecting = false;
+    int ret = 0;
     do{
-        ret = poll(handlers.fds, handlers.nfds, timeout);
+        ret = poll(polling.fds, polling.current_size, timeout); 
         if(ret < 0){
             if(errno == EINTR || errno == EAGAIN)
                 continue;
-            else
-                break;
+            else break;
         }
-        for(int i = 0; i < handlers.nfds; i++){
-            if(handlers[i] & POLLIN)
-                handlers[i]->HandleRead();
-            if(handlers[i] & POLLOUT)
-                handlers[i]->HandleWrite();
-            if((handlers[i] & POLLERR) || (handlers[i] & POLLNVAL))
-                handlers[i]->HandleError();
-            if((ret == 0) && handlers[i].IsTimeout())
-                handlers[i]->HandleTimeout();
+        for(int i = 0; i < polling.current_size; i++){
+            if(polling.fds[i].revents & POLLERR)
+                events[i]->OnError();
+            if(polling.fds[i].revents & POLLNVAL)
+                events[i]->OnError();
+            if(polling.fds[i].revents & POLLIN)
+                events[i]->OnRead();
+            if(polling.fds[i].revents & POLLOUT)
+                events[i]->OnRead();
+            if(events[i] && events[i]->ListeningEvents() & Events::Timeout && ret == 0)
+                events[i]->OnTimeout();
+            if(events[i] && events[i]->ListeningEvents() & Events::Any)
+                events[i]->OnAnyEvent();
         }
-        handlers.RemoveFreeHandlers();
-    }while(!end_run);
+        std::for_each(events.begin(), events.end(), [this](IEvent* e)
+            {if(e && e->End()) DeleteEvent(e);});
+    }while(!end_selecting);
 }
 
-bool EventSelector::Add(FdHandler *h)
+short EventsToPollEvents(short events)
 {
-   return handlers.AddHandler(h); 
+    short res = 0;
+    res |= events & Read ? POLLIN : 0;
+    res |= events & Write ? POLLOUT : 0;
+    res |= events & Error ? POLLERR: 0;
+    return res;
+}
+
+poll_arr::poll_arr() 
+    : fds(0), current_size(0), real_size(start_size)
+{
+    expand();
+}
+
+int poll_arr::add_fd(int fd, short events)
+{
+    int i;
+    for(i = 0; i < real_size; i++)
+        if(fds[i].fd == empty)
+            break;
+    if(i == real_size){
+        expand();
+    }
+    current_size++;
+    fds[i].fd = fd;
+    fds[i].events = EventsToPollEvents(events);
+    fds[i].revents = 0;
+    return i;
+}
+
+void poll_arr::expand()
+{
+    real_size *= 2;
+    pollfd* new_fds = new pollfd[real_size];
+    int i = 0;
+    for(; i < current_size; i++){
+        new_fds[i] = fds[i];
+    }
+    for(; i < real_size; i++){
+        new_fds[i] = {empty, 0, 0};
+    }
+    delete[] fds;
+    fds = new_fds;
+}
+
+int poll_arr::delete_fd(int fd)
+{
+   int i; 
+   for(i = 0; i < real_size; i++)
+       if(fds[i].fd == fd){
+            fds[i] = {empty, 0, 0};
+            break;
+       }
+   if(i == current_size - 1)
+       current_size--;
+   return i;
 }

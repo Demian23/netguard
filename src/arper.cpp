@@ -1,126 +1,35 @@
 #include "../include/arper.h"
 
-#include "../include/fd_handlers.h"
 #include "../include/arp.h"
-#include "../include/errors.h"
+Arper::Arper(Scheduler& m) : master(m){}
 
-class ARPHandler : public FdHandler{
-private:
-    ARP::arp_pair pair;
-    sockaddr_in ip;
-    ether_addr mac;
-    std::string interface;
-    std::string dest_ip;
-    char* bpf_buffer; 
-    int buffer_length;
-    bool find;
-public:
-    ARPHandler(sockaddr_in a_ip, ether_addr a_mac, const std::string& dest, 
-        const std::string& a_interface);
-    virtual ~ARPHandler();
-    virtual int HandleRead();    
-    virtual int HandleError();
-    virtual int HandleWrite();
-    virtual int HandleTimeout();
-    const ARP::arp_pair GetPair() const{return pair;}
-    bool Find()const{return find;}
-};
-
-ARPHandler::ARPHandler(sockaddr_in a_ip, ether_addr a_mac, const std::string& dest, 
-    const std::string& a_interface)
-    : FdHandler(-1, true), ip(a_ip), mac(a_mac), interface(a_interface), 
-    dest_ip(dest), find(false)
+bool Arper::Execute()
 {
-    ARP::set_bpf_arp(fd, buffer_length, interface.c_str());
-    pair.ip.sin_family = AF_INET;
-    bpf_buffer = new char[buffer_length];
-}
-
-ARPHandler::~ARPHandler(){delete[] bpf_buffer;}
-
-int ARPHandler::HandleRead()
-{
-    /*
-    if(curr_pair < pairs_size){
-        if(DARP::collectresponse(fd, pairs[curr_pair], bpf_buffer, buffer_length)){
-            curr_pair++;
-            timeout_counter = 0;
+    std::vector<NetDevice>& updated_dev = master.GetDevStat().devices;
+    const char*const interface = master.GetDevStat().interface.c_str();
+    std::vector<NetDevice>::iterator own_host_iterator 
+        = std::find_if(updated_dev.begin(), updated_dev.end(), 
+        [](NetDevice d){return d.GetType() == OwnHost;});
+    sockaddr_in own_ip;
+    ether_addr own_mac;
+    own_host_iterator->GetIp(own_ip);    
+    own_host_iterator->GetMac(own_mac);
+    int fd, buffer_length;
+     ARP::set_bpf_arp(fd, buffer_length, interface);
+    char *bpf_buffer = new char[buffer_length];
+    for(int i = 0; i < updated_dev.size(); i++)
+        if(!updated_dev[i].HasMac()){
+            int counter = 0; bool find;
+            ARP::arp_pair p;
+            do{
+                ARP::writequery(fd, &own_mac, &own_ip, updated_dev[i].GetIp().c_str());
+                find = ARP::collectresponse(fd, p, bpf_buffer, buffer_length) 
+                && updated_dev[i].GetIp() == inet_ntoa(p.ip.sin_addr);
+                counter++;
+            }while(!find && counter < 5);
+            if(find)
+                updated_dev[i].SetMac(p.mac);
         }
-    } else {
-        sel.EndRun();
-    }
-    */
-    return 0;
-}
-
-int ARPHandler::HandleWrite()
-{
-//    DARP::writequeries(fd, &mac, &ip, dest_ips, pairs_size);
-    //this->SetEvents(this->IETEvent);
-    //sel.UpdateEvents(this);
-    return 0;
-}
-
-int ARPHandler::HandleError()
-{
-    errors::SysRet("%s", __LINE__);
-    return 0;
-}
-
-int ARPHandler::HandleTimeout()
-{
-    // this code should be rewrited to HandleRead/Write
-    int counter = 0;
-    do{
-        ARP::writequery(fd, &mac, &ip, dest_ip.c_str());
-        find = ARP::collectresponse(fd, pair, bpf_buffer, buffer_length) 
-            && dest_ip == inet_ntoa(pair.ip.sin_addr);
-        counter++;
-    }while(!find && counter < 5);
-    return 0;
-}
-
-Arper::Arper(Scheduler& m, const std::string& a_in) : ScheduledEvent(m), 
-    interface(a_in), init(false)
-{
-    std::vector<NetDevice> temp = m.GetDevices(); 
-    for(std::vector<NetDevice>::iterator it = temp.begin(); it != temp.end();
-        it++){
-        if(it->GetType() == OwnHost){
-           own_dev = *it; 
-        }
-    }
-}
-
-void Arper::Init()
-{
-    std::vector<NetDevice> temp = master.GetDevices(); 
-    for(std::vector<NetDevice>::iterator it = temp.begin(); it != temp.end();
-            it++){
-        if(!it->HasMac()){
-            updated_dev.push_back(*it);
-        }
-    }
-    init = true;
-}
-void Arper::Act()
-{
-    if(!init)
-        Init();
-    if(!updated_dev.empty() && current_index != updated_dev.size()){
-        sockaddr_in own_ip;
-        ether_addr own_mac;
-        own_dev.GetIp(own_ip);    
-        own_dev.GetMac(own_mac);
-        ARPHandler arp(own_ip, own_mac, updated_dev[current_index].GetIp(),
-            interface);
-        arp.HandleTimeout();
-        if(arp.Find()){
-            updated_dev[current_index].SetMac(arp.GetPair().mac);
-        }
-        current_index++;
-    }else{
-        master.EndNormalScheduledEvent();
-    }
-    
+    delete[] bpf_buffer;
+    return true;
 }

@@ -1,45 +1,43 @@
 #include "../include/scheduler.h"
-#include "../include/pinger.h"
-#include "../include/arper.h"
-#include "../include/router.h"
 
-void Scheduler::EndNormalScheduledEvent()
+Scheduler::Scheduler(EventSelector& sel, NetInfo& inf)
+    : selector(sel), dev_stat(inf), descriptor(2), is_end(false)
+{}
+
+void Scheduler::AddOrdinaryTask(Task *t){schedule.push(t);}
+void Scheduler::TakeOffOrdinaryTask()
 {
     delete schedule.front();
-    schedule.pop(); 
-    if(schedule.empty()){
-        timeout_counter = 0;
-        std::for_each(information.devices.begin(), information.devices.end(), 
-            print); 
-        selector.EndRun();
+    schedule.pop();
+}
+
+void Scheduler::OnTimeout()
+{
+    bool done = false;
+    if(!schedule.empty()){
+        done = schedule.front()->Execute();
+        if(done)
+            TakeOffOrdinaryTask();
+    } else {
+        selector.EndSelecting();
+    }
+}
+void Scheduler::OnAnyEvent(){}
+void Scheduler::OnError(){is_end = true;}
+void Scheduler::OnRead(){}
+void Scheduler::OnWrite(){}
+bool Scheduler::End() const {return is_end;}
+short Scheduler::ListeningEvents() const {return Timeout;}
+void Scheduler::ResetEvents(int events){}
+int Scheduler::GetDescriptor()const{return 2;}
+
+Scheduler::~Scheduler()
+{
+    while(!schedule.empty()){
+        delete schedule.front();
+        schedule.pop();
     }
 }
 
-void Scheduler::SetNormalScheduledEvent(ScheduledEvent *sch_event)
-{
-    schedule.push(sch_event);
-}
-
-int Scheduler::HandleTimeout()
-{
-    if(!schedule.empty())
-        schedule.front()->Act();    
-    else{
-//        timeout_counter++;
-//        if(timeout_counter == 10){
-            Pinger* ping = new Pinger(*this, information.ip_set);
-            Arper* arp = new Arper(*this, information.interface);
-            FindGate* router = new FindGate(*this);
-
-            SetNormalScheduledEvent(ping);
-            SetNormalScheduledEvent(arp);
-            SetNormalScheduledEvent(router);
- //       }
-
-    }
-    return 0;
-}
-
-int Scheduler::HandleRead(){return 0;}
-int Scheduler::HandleWrite(){return 0;}
-int Scheduler::HandleError(){return 0;}
+NetInfo& Scheduler::GetDevStat(){return dev_stat;}
+void Scheduler::AddToSelector(IEvent *e){selector.AddEvent(e);}

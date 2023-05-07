@@ -3,83 +3,39 @@
 #include "../include/host_addr.h"
 #include "../include/icmp.h"
 #include <fcntl.h>
+#include <unistd.h>
 
-class SendEcho : public FdHandler{
-private:
-    Pinger& father;
-    const std::string& dest_ip;
-    int id;
-public:
-    SendEcho(int a_fd, bool own, const std::string& ip, int a_id, Pinger& f);
-    const std::string& GetDestIp() const{return dest_ip;}
-    virtual int HandleTimeout();
-    virtual int HandleError();
-    virtual int HandleRead();
-    virtual int HandleWrite();
-    virtual ~SendEcho(){}
-};
-
-class RecvEcho: public FdHandler{
+class RecvEcho: public IEvent{
 private:
     std::set<std::string> ips;
     msghdr msg;
+    int fd;
+    bool end;
 public:
-    RecvEcho(int a_fd, bool own);
-    virtual int HandleError();
-    virtual int HandleRead();
-    virtual int HandleWrite();
-    virtual int HandleTimeout();
+    RecvEcho();
+    void OnRead()override; 
+    void OnWrite()override; 
+    void OnError()override; 
+    void OnTimeout()override; 
+    void OnAnyEvent()override;
+    short ListeningEvents() const override; 
+    void ResetEvents(int events)override;
+    int GetDescriptor()const override;
+    bool End() const override{return end;}
+    void SetEnd(){end = true;}
     const std::set<std::string>& GetIps() const{return ips;}
-    virtual ~RecvEcho(){}
+    virtual ~RecvEcho(){close(fd);}
 };
 
-
-SendEcho::SendEcho(int a_fd, bool own, const std::string& ip, int a_id, Pinger& f)
-    : FdHandler(a_fd, own), father(f), dest_ip(ip), id(a_id)
-{}
-
-int SendEcho::HandleRead()
+RecvEcho::RecvEcho() : fd(-1), end(false)
 {
-    errors::Msg("Try to read from SendEcho");
-    return -1;
-}
-
-int SendEcho::HandleError()
-{
-    errors::SysRet("Some error on SendEcho");
-    return 0;
-}
-
-int SendEcho::HandleWrite()
-{
-    sockaddr_in dest_addr = host_addr::set_addr(dest_ip.c_str(), AF_INET);
-    ICMP::send_echo(fd, id, 0, &dest_addr, sizeof(dest_addr));
-    SetEvents(None);
-    father.UpdateHandlerEvents(this);
-    ExplicitlyEnd();
-    return 0;
-}
-
-int SendEcho::HandleTimeout()
-{
-    return -1;
-}
-
-RecvEcho::RecvEcho(int a_fd, bool own)
-    : FdHandler(a_fd, own)
-{
+    ICMP::make_icmp_socket(fd);
     memset(&msg, 0, sizeof(msg)); 
     int flags = fcntl(fd, F_GETFL);
     fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 }
 
-int RecvEcho::HandleError()
-{
-    errors::SysRet("Some errror on RecvEcho");  
-    return 0;
-}
-
-int RecvEcho::HandleRead()
+void RecvEcho::OnRead()
 {
     bool end_read;
     do{
@@ -94,91 +50,68 @@ int RecvEcho::HandleRead()
         }
         delete[] msg.msg_iov; delete[] (char*) msg.msg_control;
     }while(!end_read);
-    return 0;
 }
 
-int RecvEcho::HandleWrite()
-{
-    errors::Msg("Try to write form RecvEcho");
-    return -1;
-}
-
-int RecvEcho::HandleTimeout()
-{
-    return -1;
-}
+int RecvEcho::GetDescriptor() const{return fd;}
+void RecvEcho::OnError(){errors::SysRet("recv echo");end = true;}
+void RecvEcho::OnWrite(){}
+void RecvEcho::OnTimeout(){}
+void RecvEcho::OnAnyEvent(){}
+short RecvEcho::ListeningEvents() const {return Read + Error;}
+void RecvEcho::ResetEvents(int events){}
 
 Pinger::Pinger(Scheduler& m, const std::set<std::string>& ip_set)
-    : ScheduledEvent(m), ping_ips(ip_set), id(ICMP::get_id())
+    : master(m), reciver(0)
 {
-    poll_size = 8; // TODO:make it adaptive to size of network
-    it = ping_ips.begin(); 
-    send_icmp_sd= new int[poll_size];
-    send_handlers = new SendEcho*[poll_size]; 
+    it = master.GetDevStat().ip_set.begin();
+    send_icmp_sd= new int[send_in_time];
 }
 
 Pinger::~Pinger()
 {
-    delete[] send_handlers;
     delete[] send_icmp_sd;
 }
 
-void Pinger::Act()
+bool Pinger::Execute()
 {
-    //first check if we can create new send/echo 
-    //no, than skeep
-    if(send_handlers[0] != 0){
-        if(!CreateHandlers()){
-            UpdateDevices();            
-            master.EndNormalScheduledEvent();
-        }
+    bool result = false;
+    if(reciver == 0){
+        reciver = new RecvEcho();
+        master.AddToSelector(reciver);
     } else {
-        CreateHandlers();
-        int reciver_fd;
-        if(ICMP::make_icmp_socket(reciver_fd))
-            reciver = new RecvEcho(reciver_fd, true);
-        else 
-            errors::Sys("Pinger::Act");
-        reciver->SetEvents(FdHandler::InEvent + FdHandler::ErrEvent);
-        master.AddHandler(reciver);
+        bool is_send = SendEcho();
+        if(!is_send){
+            UpdateDevices();
+            result = true;
+        }
     }
+    return result;
 }
 
-bool Pinger::CreateHandlers()
+bool Pinger::SendEcho()
 {
     bool res = false;
-    if(it != ping_ips.end()){
-        for(int i = 0; it != ping_ips.end() && i < poll_size; it++, i++){
-            if(!ICMP::make_icmp_socket(send_icmp_sd[i]))
-                errors::Sys("ICMP socket not created.");
-            send_handlers[i] = new SendEcho(send_icmp_sd[i], true, 
-                *it, id, *this);
-            send_handlers[i]->SetEvents(FdHandler::OutEvent + FdHandler::ErrEvent);
-            master.AddHandler(send_handlers[i]);
-            id = ICMP::get_id();
-        }
+    for(int i = 0; it != master.GetDevStat().ip_set.end() && i < send_in_time; it++, i++){
+        if(!ICMP::make_icmp_socket(send_icmp_sd[i]))
+            errors::Sys("ICMP socket not created.");
+        sockaddr_in dest_addr = host_addr::set_addr((*it).c_str(), AF_INET);
+        ICMP::send_echo(send_icmp_sd[i], ICMP::get_id(), 0, &dest_addr, sizeof(dest_addr));
         res = true;
+        close(send_icmp_sd[i]);
     }
     return res;
 }
 
-void Pinger::UpdateHandlerEvents(FdHandler *h)
-{
-    master.UpdateHandlerEvents(h);
-}
-
 void Pinger::UpdateDevices()
 {
-    std::vector<NetDevice>& temp = master.GetDevices();
-    const std::set<std::string>& ips_set = reciver->GetIps();
-    std::set<std::string>::const_iterator ips_it = ips_set.begin();
-    for(;ips_it != ips_set.end(); ips_it++){
+    std::vector<NetDevice>& temp = master.GetDevStat().devices;
+    const std::set<std::string>& ip_set = static_cast<RecvEcho*>(reciver)->GetIps();
+    std::set<std::string>::const_iterator ip_set_it = ip_set.begin();
+    for(;ip_set_it != ip_set.end(); ip_set_it++){
         NetDevice new_dev; 
-        new_dev.SetIpv4(*ips_it);
+        new_dev.SetIpv4(*ip_set_it);
         temp.push_back(new_dev);
     }
-    reciver->SetEvents(FdHandler::None);
-    UpdateHandlerEvents(reciver);
-    reciver->ExplicitlyEnd();
+    reinterpret_cast<RecvEcho*>(reciver)->SetEnd();
 }
 
