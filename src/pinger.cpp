@@ -1,7 +1,7 @@
 #include "../include/pinger.h"
 #include "../include/errors.h"
 #include "../include/host_addr.h"
-#include "../include/icmp.h"
+#include "../include/raw_packets.h"
 #include <fcntl.h>
 #include <unistd.h>
 
@@ -29,7 +29,7 @@ public:
 
 RecvEcho::RecvEcho() : fd(-1), end(false)
 {
-    ICMP::make_icmp_socket(fd);
+    raw_packets::make_raw_socket(fd, IPPROTO_ICMP);
     memset(&msg, 0, sizeof(msg)); 
     int flags = fcntl(fd, F_GETFL);
     fcntl(fd, F_SETFL, flags | O_NONBLOCK);
@@ -39,13 +39,12 @@ void RecvEcho::OnRead()
 {
     bool end_read;
     do{
-        ssize_t len = ICMP::recv_reply(fd , &msg);
+        ssize_t len = raw_packets::recv_reply(fd , &msg);
         end_read = len == -1;
         if(!end_read){
             in_addr ip;
-            ICMP::Errors result = ICMP::get_echo(
-                    reinterpret_cast<char *>(msg.msg_iov->iov_base),len, ip);
-            if(result == ICMP::Allright)
+            if(raw_packets::get_echo(reinterpret_cast<char *>(
+            msg.msg_iov->iov_base),len, ip))
                 ips.insert(inet_ntoa(ip));
         }
         delete[] msg.msg_iov; delete[] (char*) msg.msg_control;
@@ -92,10 +91,11 @@ bool Pinger::SendEcho()
 {
     bool res = false;
     for(int i = 0; it != master.GetDevStat().ip_set.end() && i < send_in_time; it++, i++){
-        if(!ICMP::make_icmp_socket(send_icmp_sd[i]))
+        if(!raw_packets::make_raw_socket(send_icmp_sd[i], IPPROTO_ICMP))
             errors::Sys("ICMP socket not created.");
         sockaddr_in dest_addr = host_addr::set_addr((*it).c_str(), AF_INET);
-        ICMP::send_echo(send_icmp_sd[i], ICMP::get_id(), 0, &dest_addr, sizeof(dest_addr));
+        raw_packets::send_echo(send_icmp_sd[i], raw_packets::get_id(), 0, 
+            &dest_addr, sizeof(dest_addr));
         res = true;
         close(send_icmp_sd[i]);
     }
