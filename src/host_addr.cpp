@@ -3,11 +3,19 @@
 #include <net/if_types.h>
 #include <arpa/inet.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "../include/host_addr.h"
 #include "../include/errors.h"
 
 namespace host_addr{
+
+std::string get_own_name()
+{
+    char buffer[1024]={};
+    gethostname(buffer, 1024);
+    return buffer;
+}
 
 sockaddr_in set_addr(const char *ip, int family)
 {

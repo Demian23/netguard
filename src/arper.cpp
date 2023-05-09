@@ -1,35 +1,39 @@
 #include "../include/arper.h"
-
 #include "../include/arp.h"
+#include <arpa/inet.h>
+#include <cstring>
+#include "../include/mac.h"
+#include "../include/ip.h"
 Arper::Arper(Scheduler& m) : master(m){}
 
 bool Arper::Execute()
 {
-    std::vector<NetDevice>& updated_dev = master.GetDevStat().devices;
-    const char*const interface = master.GetDevStat().interface.c_str();
-    std::vector<NetDevice>::iterator own_host_iterator 
-        = std::find_if(updated_dev.begin(), updated_dev.end(), 
-        [](NetDevice d){return d.GetType() == OwnHost;});
+    const std::string interface = master.manager.GetInterface();
     sockaddr_in own_ip;
     ether_addr own_mac;
-    own_host_iterator->GetIp(own_ip);    
-    own_host_iterator->GetMac(own_mac);
+    inet_aton(master.manager.GetOwnNode().ipv4_address.c_str(), &own_ip.sin_addr);
+    ether_addr* temp_mac = ether_aton(master.manager.GetOwnNode().mac_address.c_str());
+    memmove(&own_mac, temp_mac, ETHER_ADDR_LEN);
     int fd, buffer_length;
-     ARP::set_bpf_arp(fd, buffer_length, interface);
+    ARP::set_bpf_arp(fd, buffer_length, interface.c_str());
     char *bpf_buffer = new char[buffer_length];
-    for(int i = 0; i < updated_dev.size(); i++)
-        if(!updated_dev[i].HasMac()){
+    NetMap& map = master.manager.GetMap();
+    for(NetMap::iterator it = map.begin(); it != map.end(); it++){
+        if(it->second.mac_address.empty()){
             int counter = 0; bool find;
             ARP::arp_pair p;
             do{
-                ARP::writequery(fd, &own_mac, &own_ip, updated_dev[i].GetIp().c_str());
-                find = ARP::collectresponse(fd, p, bpf_buffer, buffer_length) 
-                && updated_dev[i].GetIp() == inet_ntoa(p.ip.sin_addr);
+                ARP::writequery(fd, &own_mac, &own_ip, it->first.c_str());
+                find = ARP::collectresponse(fd, p, bpf_buffer, buffer_length);
+                find &= it->first == inet_ntoa(p.ip.sin_addr);
                 counter++;
             }while(!find && counter < 5);
-            if(find)
-                updated_dev[i].SetMac(p.mac);
+            if(find){
+                it->second.mac_address = MAC::mac_to_string(p.mac);
+                it->second.vendor = MAC::get_vendor(p.mac);
+            }
         }
+    }
     delete[] bpf_buffer;
     return true;
 }

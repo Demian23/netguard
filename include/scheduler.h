@@ -2,7 +2,7 @@
 #define SCHEDULER_DEF
 
 #include "../include/event_selector.h"
-#include "../include/NetDevice.h"
+#include "../include/nodes_manager.h"
 #include "event.h"
 #include <queue>
 #include <set>
@@ -16,7 +16,7 @@ public:
 
 class Scheduler : public IEvent{
 public:
-    Scheduler(EventSelector& sel, NetInfo& inf);
+    Scheduler(EventSelector& sel, NodesManager& m);
     void AddOrdinaryTask(Task* t);
     void TakeOffOrdinaryTask();
     void OnTimeout() override;
@@ -29,12 +29,11 @@ public:
     void ResetEvents(int events) override;
     int GetDescriptor()const override;
     virtual ~Scheduler();
-    NetInfo& GetDevStat();
     void AddToSelector(IEvent* e);
+    NodesManager& manager;
 private:
     EventSelector& selector;
     std::queue<Task*> schedule;
-    NetInfo& dev_stat;
     int descriptor;
     bool is_end;
 };

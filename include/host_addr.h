@@ -10,6 +10,7 @@ namespace host_addr{
     std::string get_local_ip();
     bool findownaddr(std::string& interface, ether_addr& ownmac, 
         sockaddr_in& saip, sockaddr_in& samask);
+    std::string get_own_name();
 }
 
 #endif

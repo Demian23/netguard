@@ -1,10 +1,28 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <netdb.h>
+#include "../include/errors.h"
 
 #include "../include/ip.h"
 
 namespace IP{
+
+std::string get_name(sockaddr_in* addr)
+{
+    char buff[NI_MAXHOST];
+    getnameinfo(reinterpret_cast<const sockaddr*>(addr), sizeof(sockaddr_in), 
+        buff, NI_MAXHOST, 0, 0, 0);
+    return buff;
+}
+
+in_addr str_to_ip(const char *ip_str)
+{
+    in_addr res;
+    if(!inet_aton(ip_str, &res))
+        errors::SysRet("");
+    return res;
+}
 
 static int itoa(int n, char s[]);
 short mask_prefix(const std::string& mask)

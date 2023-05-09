@@ -7,8 +7,9 @@
 
 class RecvEcho: public IEvent{
 private:
+    enum{buffer_size = 1024};
     std::set<std::string> ips;
-    msghdr msg;
+    char* buffer;
     int fd;
     bool end;
 public:
@@ -24,13 +25,13 @@ public:
     bool End() const override{return end;}
     void SetEnd(){end = true;}
     const std::set<std::string>& GetIps() const{return ips;}
-    virtual ~RecvEcho(){close(fd);}
+    virtual ~RecvEcho(){close(fd); delete[] buffer;}
 };
 
 RecvEcho::RecvEcho() : fd(-1), end(false)
 {
     raw_packets::make_raw_socket(fd, IPPROTO_ICMP);
-    memset(&msg, 0, sizeof(msg)); 
+    buffer = new char[buffer_size];
     int flags = fcntl(fd, F_GETFL);
     fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 }
@@ -38,16 +39,15 @@ RecvEcho::RecvEcho() : fd(-1), end(false)
 void RecvEcho::OnRead()
 {
     bool end_read;
+    sockaddr_in from;
     do{
-        ssize_t len = raw_packets::recv_reply(fd , &msg);
+        ssize_t len = raw_packets::recieve_packet(fd, buffer, buffer_size, &from);
         end_read = len == -1;
         if(!end_read){
             in_addr ip;
-            if(raw_packets::get_echo(reinterpret_cast<char *>(
-            msg.msg_iov->iov_base),len, ip))
+            if(raw_packets::get_echo(buffer, len, ip))
                 ips.insert(inet_ntoa(ip));
         }
-        delete[] msg.msg_iov; delete[] (char*) msg.msg_control;
     }while(!end_read);
 }
 
@@ -62,8 +62,8 @@ void RecvEcho::ResetEvents(int events){}
 Pinger::Pinger(Scheduler& m, const std::set<std::string>& ip_set)
     : master(m), reciver(0)
 {
-    it = master.GetDevStat().ip_set.begin();
-    send_icmp_sd= new int[send_in_time];
+    it = master.manager.GetIpSet().begin();
+    send_icmp_sd = new int[send_in_time];
 }
 
 Pinger::~Pinger()
@@ -90,7 +90,7 @@ bool Pinger::Execute()
 bool Pinger::SendEcho()
 {
     bool res = false;
-    for(int i = 0; it != master.GetDevStat().ip_set.end() && i < send_in_time; it++, i++){
+    for(int i = 0; it != master.manager.GetIpSet().end() && i < send_in_time; it++, i++){
         if(!raw_packets::make_raw_socket(send_icmp_sd[i], IPPROTO_ICMP))
             errors::Sys("ICMP socket not created.");
         sockaddr_in dest_addr = host_addr::set_addr((*it).c_str(), AF_INET);
@@ -104,13 +104,18 @@ bool Pinger::SendEcho()
 
 void Pinger::UpdateDevices()
 {
-    std::vector<NetDevice>& temp = master.GetDevStat().devices;
     const std::set<std::string>& ip_set = static_cast<RecvEcho*>(reciver)->GetIps();
     std::set<std::string>::const_iterator ip_set_it = ip_set.begin();
+    NetMap& map = master.manager.GetMap();
     for(;ip_set_it != ip_set.end(); ip_set_it++){
-        NetDevice new_dev; 
-        new_dev.SetIpv4(*ip_set_it);
-        temp.push_back(new_dev);
+        if(map.find(*ip_set_it) == map.end()){
+            NetNode new_node; 
+            new_node.ipv4_address = *ip_set_it;
+            sockaddr_in temp;temp.sin_family = AF_INET; 
+            temp.sin_addr = IP::str_to_ip(new_node.ipv4_address.c_str());
+            new_node.name = IP::get_name(&temp);
+            master.manager.AddNode(new_node);
+        }
     }
     reinterpret_cast<RecvEcho*>(reciver)->SetEnd();
 }

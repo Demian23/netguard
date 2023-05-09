@@ -37,5 +37,5 @@ $(BIN_DIR):
 
 clean:
 	$(RM) $(OBJ)/*
-	$(RM) -rf $(BIN_DIR)/* 
+	$(RM) -rf $(BIN_DIR)/* $(TEST).dSYM
 	$(RM) $(TEST)

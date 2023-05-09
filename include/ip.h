@@ -21,5 +21,8 @@ namespace IP{
     short mask_prefix(const std::string& mask);
 
     DevType devtype_from_vendor(const char *vendor); 
+
+    std::string get_name(sockaddr_in* addr);
+    in_addr str_to_ip(const char* ip_str);
 };
 #endif

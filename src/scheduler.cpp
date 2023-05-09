@@ -1,7 +1,7 @@
 #include "../include/scheduler.h"
 
-Scheduler::Scheduler(EventSelector& sel, NetInfo& inf)
-    : selector(sel), dev_stat(inf), descriptor(2), is_end(false)
+Scheduler::Scheduler(EventSelector& sel, NodesManager& m)
+    : manager(m), selector(sel), descriptor(2), is_end(false)
 {}
 
 void Scheduler::AddOrdinaryTask(Task *t){schedule.push(t);}
@@ -39,5 +39,4 @@ Scheduler::~Scheduler()
     }
 }
 
-NetInfo& Scheduler::GetDevStat(){return dev_stat;}
 void Scheduler::AddToSelector(IEvent *e){selector.AddEvent(e);}

@@ -4,6 +4,7 @@
 #include "../../include/router.h"
 #include "../../include/host_addr.h"
 #include "../../include/ip.h"
+#include "../../include/mac.h"
 #include "../../include/errors.h"
 #include <algorithm>
 
@@ -39,17 +40,20 @@ int main(int argc, char **argv)
     std::string interface, net;
     get_cmdl_args(argc, argv, interface, ownmac, ip, mask, mask_prefix, net);
     
-    NetDevice own_device; 
-    own_device.SetIpv4(ip.sin_addr);
-    own_device.SetMac(ownmac);
-    own_device.SetType(OwnHost);
-    std::vector<NetDevice> devices;
-    devices.push_back(own_device);
+    NetNode own_node;
+    own_node.ipv4_address = inet_ntoa(ip.sin_addr);
+    own_node.mac_address = MAC::mac_to_string(ownmac);
+    own_node.vendor = MAC::get_vendor(ownmac);
+    own_node.type = "Own host";
+    own_node.name = host_addr::get_own_name();
     std::set<std::string> ip_set = IP::all_net_ipv4(net, 0, IP::ip_amount(mask_prefix));
     ip_set.erase(inet_ntoa(ip.sin_addr));
-    NetInfo inf = {.ip_set = ip_set, .interface = interface, .devices = devices};
+    NodesManager manager;
+    manager.SetIps(ip_set);
+    manager.SetInterface(interface);
+    manager.AddNode(own_node);
     EventSelector selector;
-    Scheduler* scheduler = new Scheduler(selector, inf);
+    Scheduler* scheduler = new Scheduler(selector, manager);
     Pinger* pinger = new Pinger(*scheduler, ip_set);
     Arper* arper = new Arper(*scheduler);
     FindGate* gate = new FindGate(*scheduler);
@@ -57,8 +61,17 @@ int main(int argc, char **argv)
     scheduler->AddOrdinaryTask(arper);
     scheduler->AddOrdinaryTask(gate);
     selector.AddEvent(scheduler);
-    selector.StartSelecting(500);
-    std::for_each(devices.begin(), devices.end(), [](NetDevice e){print(e);});
+    selector.StartSelecting(100);
+    std::for_each(manager.GetMap().begin(), manager.GetMap().end(),
+        [](std::pair<std::string, NetNode> n){
+            printf("Ip: %s, mac: %s, type: %s", n.first.c_str(), 
+            n.second.mac_address.c_str(), n.second.type.c_str());
+            if(!n.second.name.empty())
+                printf(", name: %s", n.second.name.c_str());
+            if(!n.second.vendor.empty())
+                printf(", vendor: %s", n.second.vendor.c_str());
+            putchar('\n');
+        });
     return 0;
 }
 

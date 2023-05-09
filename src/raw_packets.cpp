@@ -112,6 +112,27 @@ bool send_syn(int sockfd, const sockaddr_in& src, sockaddr_in* dest,
     return res;
 }
 
+// nonblock socket 
+
+bool get_syn_answer(char* packet, int len, sockaddr_in* from)
+{
+    ip* ip_hdr = reinterpret_cast<ip*>(packet);
+    uint8_t offset = ip_hdr->ip_hl * 4;
+    tcphdr* tcp_hdr = reinterpret_cast<tcphdr*>(packet + offset);
+    bool res = false;
+    if(ip_hdr->ip_p == IPPROTO_TCP){
+        if(tcp_hdr->th_flags | TH_ACK && tcp_hdr->th_flags | TH_SYN){
+           res = true; 
+           from->sin_addr = ip_hdr->ip_src;
+           from->sin_port = tcp_hdr->th_sport;
+        } else if(tcp_hdr->th_flags | TH_RST){
+           from->sin_addr = ip_hdr->ip_src;
+           from->sin_port = tcp_hdr->th_sport;
+        }
+    }
+    return res;
+}
+
 // is it necessary?
 std::atomic_uint16_t id(getpid() & 0xFFFF);
 
@@ -135,27 +156,15 @@ void send_echo(int sockfd, int id, int seq,
         reinterpret_cast<sockaddr *>(dest_addr), addr_len);
 }
 
-ssize_t recv_reply(int sockfd, struct msghdr *msg)
+ssize_t recieve_packet(int sockfd, char* buffer, int buffer_size, 
+    sockaddr_in* src)
 {
-    enum{icmp_buff_size = 1024};
-    char *msg_buf = new char[icmp_buff_size];
-    char *controll_buf = new char[icmp_buff_size];
-
-    iovec *iovec_s = new iovec;
-    iovec_s->iov_len = icmp_buff_size;
-    iovec_s->iov_base = msg_buf;
-
-    msg->msg_name = 0;
-    msg->msg_namelen = 0;
-    msg->msg_iov = iovec_s;
-    msg->msg_iovlen = 1;
-    msg->msg_control = controll_buf;
-    msg->msg_controllen = icmp_buff_size;
-    msg->msg_flags = 0; 
-    ssize_t res = recvmsg(sockfd, msg, 0);
+    socklen_t len = sizeof(sockaddr_in);
+    ssize_t res = recvfrom(sockfd, buffer, buffer_size, 0, 
+        reinterpret_cast<sockaddr*>(src), &len);
     if(res == -1){
         if(errno != EAGAIN)
-            errors::Sys("recvmsg mistake");
+            errors::SysRet("");
     }
     return res;
 }
