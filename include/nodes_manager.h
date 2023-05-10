@@ -4,18 +4,19 @@
 #include <unordered_map> 
 #include <set>
 
-enum PortCondition{Open, Closed, Filtered};
+enum PortCondition{Unset, Repeat, Open, Closed, Filtered};
+struct NetNode;
+typedef std::unordered_map<uint16_t, PortCondition> ports_storage;
+typedef std::unordered_map<std::string, NetNode> NetMap;
 struct NetNode{
     std::string ipv4_address;
     std::string mac_address;
     std::string name;
     std::string vendor;
     std::string type;
-    std::unordered_map<uint16_t, PortCondition> ports;
+    ports_storage ports;
     NetNode() : type("Host"){}
 };
-
-typedef std::unordered_map<std::string, NetNode> NetMap;
 class NodesManager{
 public:
     NetMap& GetMap();

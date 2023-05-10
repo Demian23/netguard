@@ -16,6 +16,18 @@ struct pseudo_header    //needed for checksum calculation in syn
     tcphdr tcp;
 };
 
+bool bind_socket_to_interface(int sd, const char* interface)
+{
+    ifreq ifr;
+    memset(&ifr, 0, sizeof(ifr));
+    strncpy(ifr.ifr_name, interface, IFNAMSIZ);
+    bool result = true;
+    if(setsockopt(sd, SOL_SOCKET, IP_BOUND_IF, &ifr, sizeof(ifr) == -1)){
+        errors::SysRet("Fail bind to interface");
+        result = false;
+    }
+    return result;
+}
 
 bool make_raw_socket(int& sd, int type)
 {
@@ -49,8 +61,8 @@ uint16_t calc_checksum(uint16_t *addr, int len)
 }
 
 //return result packet size, assumed that packet buffer is big enough
-int prepare_syn_packet(char* packet, in_addr src, in_addr dest, 
-    uint16_t src_port, uint16_t dest_port)
+int prepare_tcp_packet(char* packet, in_addr src, in_addr dest, 
+    uint16_t src_port, uint16_t dest_port, uint8_t flags)
 {
     ip *ip_hdr = reinterpret_cast<ip*>(packet);
     tcphdr* tcp_hdr = reinterpret_cast<tcphdr*>(packet + sizeof(ip));
@@ -75,7 +87,7 @@ int prepare_syn_packet(char* packet, in_addr src, in_addr dest,
     tcp_hdr->th_seq = 0;
     tcp_hdr->th_ack = 0;
     tcp_hdr->th_off = 5;
-    tcp_hdr->th_flags = TH_SYN;
+    tcp_hdr->th_flags = flags;
     tcp_hdr->th_win = htons(1460);
     tcp_hdr->th_sum = 0;
     tcp_hdr->th_urp = 0;
@@ -92,13 +104,13 @@ int prepare_syn_packet(char* packet, in_addr src, in_addr dest,
     return ip_hdr->ip_len;
 }
 
-bool send_syn(int sockfd, const sockaddr_in& src, sockaddr_in* dest,
-    uint16_t src_port, uint16_t dest_port)
+bool send_tcp_flag(int sockfd, const sockaddr_in& src, sockaddr_in* dest,
+    uint16_t src_port, uint16_t dest_port, uint8_t flags)
 {
     char packet[default_buffer_size] = {}; 
     bool res = true;
-    int packet_len = prepare_syn_packet(packet, src.sin_addr, 
-        dest->sin_addr, default_send_port, dest_port);
+    int packet_len = prepare_tcp_packet(packet, src.sin_addr, 
+        dest->sin_addr, default_send_port, dest_port, TH_SYN);
     int opt = 1;
     ssize_t ret = setsockopt(sockfd, IPPROTO_IP, IP_HDRINCL, &opt, 
         sizeof(int));
@@ -124,7 +136,7 @@ bool get_syn_answer(char* packet, int len, sockaddr_in* from)
         if(tcp_hdr->th_flags | TH_ACK && tcp_hdr->th_flags | TH_SYN){
            res = true; 
            from->sin_addr = ip_hdr->ip_src;
-           from->sin_port = tcp_hdr->th_sport;
+           from->sin_port = tcp_hdr->th_sport;           
         } else if(tcp_hdr->th_flags | TH_RST){
            from->sin_addr = ip_hdr->ip_src;
            from->sin_port = tcp_hdr->th_sport;

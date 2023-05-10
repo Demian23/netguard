@@ -2,8 +2,6 @@
 #include "../include/errors.h"
 #include "../include/host_addr.h"
 #include "../include/raw_packets.h"
-#include <fcntl.h>
-#include <unistd.h>
 
 class RecvEcho: public IEvent{
 private:

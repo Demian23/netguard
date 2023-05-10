@@ -11,14 +11,17 @@
 #include <unistd.h>
 #include <atomic>
 #include <netinet/ip_icmp.h>
+#include <fcntl.h>
+#include <net/if.h>
 
 namespace raw_packets{
 
 uint16_t calc_checksum(uint16_t *addr, int len);
-bool send_syn(int sockfd, const sockaddr_in& src, sockaddr_in* dest,
-    uint16_t src_port, uint16_t dest_port);
+bool send_tcp_flag(int sockfd, const sockaddr_in& src, sockaddr_in* dest,
+    uint16_t src_port, uint16_t dest_port, uint8_t flags);
 bool get_syn_answer(char* packet, int len, sockaddr_in* from);
 bool make_raw_socket(int& sd, int type);
+bool bind_socket_to_interface(int sd, const char* interface);
 
 int get_id();
 void send_echo(int sockfd, int id, int seq, 

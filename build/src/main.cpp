@@ -2,6 +2,7 @@
 #include "../../include/pinger.h"
 #include "../../include/arper.h"
 #include "../../include/router.h"
+#include "../../include/port_scanner.h"
 #include "../../include/host_addr.h"
 #include "../../include/ip.h"
 #include "../../include/mac.h"
@@ -57,9 +58,11 @@ int main(int argc, char **argv)
     Pinger* pinger = new Pinger(*scheduler, ip_set);
     Arper* arper = new Arper(*scheduler);
     FindGate* gate = new FindGate(*scheduler);
+    PortScanner* scanner = new PortScanner(*scheduler, "192.168.1.15", "192.168.1.1");
     scheduler->AddOrdinaryTask(pinger);
     scheduler->AddOrdinaryTask(arper);
     scheduler->AddOrdinaryTask(gate);
+    scheduler->AddOrdinaryTask(scanner);
     selector.AddEvent(scheduler);
     selector.StartSelecting(100);
     std::for_each(manager.GetMap().begin(), manager.GetMap().end(),
@@ -70,6 +73,9 @@ int main(int argc, char **argv)
                 printf(", name: %s", n.second.name.c_str());
             if(!n.second.vendor.empty())
                 printf(", vendor: %s", n.second.vendor.c_str());
+            if(!n.second.ports.empty()){
+                printf("here");
+            }
             putchar('\n');
         });
     return 0;
