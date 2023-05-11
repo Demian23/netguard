@@ -1,0 +1,117 @@
+# data file for the Fltk User Interface Designer (fluid)
+version 1.0308
+header_name {gui.h}
+code_name {gui.cpp}
+class NetGuardUserInterface {open
+} {
+  Function {NetGuardUserInterface()} {
+    comment {creates all interface} open
+  } {
+    Fl_Window main_window {
+      label NetGuard open
+      xywh {322 114 1030 700} type Double color 47 labelcolor 1 size_range {1030 700 1030 700} visible
+    } {
+      Fl_Tabs tbs_main {open
+        xywh {20 25 995 645} labelsize 18
+      } {
+        Fl_Group grp_nodes {
+          label Nodes open
+          xywh {20 55 995 615} labelsize 18 hide
+        } {
+          Fl_Browser brws_nodes {
+            label {Nodes list}
+            xywh {45 80 210 550} type Hold labelsize 18 textsize 18
+          }
+          Fl_Group grp_node_info {
+            label {Node info} open
+            xywh {295 80 690 550} box UP_BOX color 42 labelsize 18 align 2
+          } {
+            Fl_Output out_name {
+              label name
+              xywh {330 110 170 40} labelsize 18 align 5 textsize 18
+            }
+            Fl_Output out_ip {
+              label ip
+              xywh {330 170 170 40} labelsize 18 align 5 textsize 18
+            }
+            Fl_Output out_mac {
+              label mac
+              xywh {330 230 170 40} labelsize 18 align 5 textsize 18
+            }
+            Fl_Output out_vendor {
+              label vendor
+              xywh {330 290 170 40} labelsize 18 align 5 textsize 18
+            }
+            Fl_Light_Button btn_is_active {
+              label Active
+              xywh {330 350 100 30} selection_color 79 labelsize 18 when 3 deactivate
+            }
+            Fl_Button btn_ports_scan {
+              label {scan ports}
+              xywh {330 400 100 35} labelsize 18
+            }
+            Fl_Check_Browser brws_ports {
+              label ports
+              xywh {705 111 245 478} type Hold labelsize 18 textsize 18
+            }
+          }
+        }
+        Fl_Group grp_settings {
+          label Settings open
+          xywh {20 50 995 620} labelsize 18
+        } {
+          Fl_Choice choice_interface {
+            label interface
+            user_data this
+            callback {clbk_interface_choice(o, v);} open
+            xywh {121 67 94 28} down_box BORDER_BOX labelsize 18 textsize 18
+          } {}
+          Fl_Spinner spn_first_ip {
+            label start
+            xywh {90 308 137 32} labelsize 18 textsize 18 deactivate
+          }
+          Fl_Spinner spn_end_ip {
+            label end
+            xywh {90 368 137 32} labelsize 18 textsize 18 deactivate
+          }
+          Fl_File_Browser file_chc_save {
+            label {choose save file}
+            xywh {355 75 255 120} type Hold labelsize 18 textsize 18
+          }
+          Fl_File_Browser fille_chc_licence {
+            label {choose licence file}
+            xywh {650 75 255 120} type Hold labelsize 18 textsize 18
+          }
+          Fl_Output out_own_net {
+            label net
+            xywh {80 123 135 32} labelsize 18 textsize 18
+          }
+          Fl_Output out_own_mask {
+            label mask
+            xywh {80 172 135 32} labelsize 18 textsize 18
+          }
+          Fl_Button btn_scan {
+            label {full scan}
+            xywh {450 500 155 35} labelsize 18
+          }
+          Fl_Progress progress {
+            label {scan progress}
+            xywh {410 448 230 32} labelsize 18
+          }
+          Fl_Output out_own_mac {
+            label mac selected
+            xywh {80 218 135 32} labelsize 18 textsize 18
+          }
+        }
+      }
+    }
+    code {init_interface_choices(choice_interface);} {}
+  }
+  Function {show()} {open
+  } {
+    code {main_window->show();} {}
+  }
+}
+
+decl {\#include "gui_helper.h"} {public global
+}

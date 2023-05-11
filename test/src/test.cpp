@@ -1,15 +1,16 @@
+#include <algorithm>
 #include <gtest/gtest.h>
+#include <iostream>
 #include "../../include/raw_packets.h"
 #include "../../include/host_addr.h"
 
-TEST(PortScanTestSuit, SendSyn){
-    int sd;
-    ASSERT_EQ(raw_packets::make_raw_socket(sd, IPPROTO_TCP), true);
-    sockaddr_in src, dest;
-    ASSERT_EQ(1, inet_pton(AF_INET, "192.168.1.1", &dest.sin_addr));
-    ASSERT_EQ(1, inet_pton(AF_INET, "192.168.1.15", &src.sin_addr));
-    src.sin_port = htons(40096);
-    ASSERT_EQ(raw_packets::send_syn(sd, src, &dest, 40096, 21), true);
+TEST(HostAddrSuit, GetNetInterfaces){
+    auto interfaces = host_addr::get_net_interfaces();    
+    ASSERT_TRUE(interfaces.size() != 0);
+    for(host_addr::interface_map::iterator it = interfaces.begin(); it != interfaces.end();
+        it++)
+        std::cout << "Name: "<<it->first << "\nNet: "<< it->second.net << 
+            "\nMask: "<< it->second.mask << "\nMac: " << it->second.mac <<"\n\n";
 }
 
 int main(int argc, char** argv)

@@ -1,15 +1,6 @@
-#include "../../include/scheduler.h"
-#include "../../include/pinger.h"
-#include "../../include/arper.h"
-#include "../../include/router.h"
-#include "../../include/port_scanner.h"
-#include "../../include/host_addr.h"
-#include "../../include/ip.h"
-#include "../../include/mac.h"
-#include "../../include/errors.h"
-#include <algorithm>
+#include "../../gui/src/gui.h"
 
-
+/*
 void get_cmdl_args(int argc, char **argv, std::string& interface, ether_addr &ownmac, sockaddr_in &ip,
         sockaddr_in &mask, short &mask_prefix, std::string& net)
 {
@@ -79,5 +70,13 @@ int main(int argc, char **argv)
             putchar('\n');
         });
     return 0;
+}
+*/
+
+int main()
+{
+    NetGuardUserInterface n; 
+    n.show();
+    return Fl::run();
 }
 
