@@ -14,11 +14,26 @@ public:
     virtual ~Task(){}
 };
 
+// task and urgent task should be never mixed
+class UrgentTask : public Task{
+public:
+    virtual bool UrgentExecute() = 0;
+    virtual ~UrgentTask(){}
+};
+
+class Statictic{
+public:
+    virtual void RecordStatistic(Task* task) = 0;
+    virtual ~Statictic(){}
+};
+
 class Scheduler : public IEvent{
 public:
     Scheduler(EventSelector& sel, NodesManager& m);
     void AddOrdinaryTask(Task* t);
     void TakeOffOrdinaryTask();
+    void AddUrgentTask(UrgentTask* t);
+    void TakeOffUrgentTask();
     void OnTimeout() override;
     void OnRead() override;
     void OnWrite() override;
@@ -30,10 +45,13 @@ public:
     int GetDescriptor()const override;
     virtual ~Scheduler();
     void AddToSelector(IEvent* e);
+    void WakeUp();
+    void EndSchedulingAndSelecting();
     NodesManager& manager;
 private:
     EventSelector& selector;
     std::queue<Task*> schedule;
+    std::queue<UrgentTask*> urgent_schedule;
     int descriptor;
     bool is_end;
 };

@@ -11,7 +11,7 @@ BIN=$(BINDIR)/netguard
 
 all:$(BIN_DIR) $(BIN)
 
-release:CPPFLAGS= -Wall -O1 -std=c++11
+release:CPPFLAGS= -Wall -O2 -std=c++11
 release:$(BIN_DIR) $(BIN)
 
 $(BIN): $(OBJS_GUI) $(OBJS_SRCS) $(OBJS)

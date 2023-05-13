@@ -4,7 +4,7 @@
 #include <unordered_map> 
 #include <set>
 
-enum PortCondition{Unset, Repeat, Open, Closed, Filtered};
+enum PortCondition{Unset, Open, Closed, Filtered};
 struct NetNode;
 typedef std::unordered_map<uint16_t, PortCondition> ports_storage;
 typedef std::unordered_map<std::string, NetNode> NetMap;

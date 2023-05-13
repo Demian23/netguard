@@ -2,6 +2,7 @@
 #include "../include/errors.h"
 #include "../include/host_addr.h"
 #include "../include/raw_packets.h"
+#include <iterator>
 
 class RecvEcho: public IEvent{
 private:
@@ -57,15 +58,16 @@ void RecvEcho::OnAnyEvent(){}
 short RecvEcho::ListeningEvents() const {return Read + Error;}
 void RecvEcho::ResetEvents(int events){}
 
-Pinger::Pinger(Scheduler& m, const std::set<std::string>& ip_set)
-    : master(m), reciver(0)
+Pinger::Pinger(Scheduler& m, Statictic* stat)
+    : master(m), statistic(stat), ips_set(master.manager.GetIpSet()), reciver(0)
 {
-    it = master.manager.GetIpSet().begin();
+    it = ips_set.begin();
     send_icmp_sd = new int[send_in_time];
 }
 
 Pinger::~Pinger()
 {
+    delete statistic;
     delete[] send_icmp_sd;
 }
 
@@ -77,6 +79,7 @@ bool Pinger::Execute()
         master.AddToSelector(reciver);
     } else {
         bool is_send = SendEcho();
+        statistic->RecordStatistic(this);
         if(!is_send){
             UpdateDevices();
             result = true;
@@ -88,7 +91,7 @@ bool Pinger::Execute()
 bool Pinger::SendEcho()
 {
     bool res = false;
-    for(int i = 0; it != master.manager.GetIpSet().end() && i < send_in_time; it++, i++){
+    for(int i = 0; it != ips_set.end() && i < send_in_time; it++, i++){
         if(!raw_packets::make_raw_socket(send_icmp_sd[i], IPPROTO_ICMP))
             errors::Sys("ICMP socket not created.");
         sockaddr_in dest_addr = host_addr::set_addr((*it).c_str(), AF_INET);
@@ -118,3 +121,7 @@ void Pinger::UpdateDevices()
     reinterpret_cast<RecvEcho*>(reciver)->SetEnd();
 }
 
+int Pinger::GetCurrentCount() const
+{
+    return std::distance(ips_set.begin(), it);
+}

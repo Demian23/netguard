@@ -7,7 +7,7 @@ OBJS_SRCS=$(wildcard $(OBJ_SRCS)/*.o)
 BINDIR=bin
 BIN=$(BINDIR)/test
 
-all:$(BIN) 
+all:$(BINDIR) $(BIN) 
 
 $(BIN): $(OBJS_SRCS)
 	$(CPPC) $(CPPFLAGS) $(LIB_TEST) $^ src/test.cpp -o $@ 
@@ -16,4 +16,4 @@ $(BINDIR):
 	mkdir -p $@
 
 clean:
-	$(RM) $(BINDIR)/*
+	$(RM) -r $(BINDIR)/*

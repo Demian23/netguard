@@ -15,17 +15,22 @@ struct poll_arr{
     void expand();
     ~poll_arr(){delete[] fds;}
 };
+
 class EventSelector{
 public:
-    EventSelector() : end_selecting(false){}
+    EventSelector() : timeout(200), end_selecting(false){}
     void AddEvent(IEvent* e);
     void DeleteEvent(IEvent* e);
-    void StartSelecting(int timeout = -1);
+    void StartSelecting();
     void EndSelecting();
+    void SetTimeout(int t);
+    int GetTimeout()const;
     ~EventSelector();
 private:
     std::vector<IEvent*> events;
     poll_arr polling;
+    //atomic?
+    int timeout;
     bool end_selecting;
 };
 

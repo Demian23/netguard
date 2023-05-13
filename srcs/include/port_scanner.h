@@ -4,25 +4,21 @@
 #include "scheduler.h"
 #include "raw_packets.h"
 
-class PortScanner final : public Task{
+class Scanner;
+class PortScanner final : public UrgentTask{
 public:
-    enum ScanMode{All};
     PortScanner(Scheduler& a_master, const std::string& src_ip, 
-        const std::string& dest_ip, ScanMode mode = All);
-    bool Execute() override;
-    virtual ~PortScanner();
+        const std::string& dest_ip, ports_storage& ports_to_scan);
+    bool UrgentExecute() override;
+    bool Execute()override{return true;}
 private:
-    enum{send_in_time = 25, default_src_port = 53545};
+    enum{scanners_size = 20};
     Scheduler& master;
-    IEvent* reciever;
-    ports_storage ports;
-    ports_storage::iterator ports_iterator; 
-    std::vector<uint16_t> last_sended;
+    ports_storage& ports;
+    ports_storage::iterator ports_it;
+    Scanner** scanners;
     sockaddr_in src;
     sockaddr_in dest;
-    int sd;
-    ports_storage GeneratePorts(ScanMode mode); 
-    int RepeatSynRequests();
 };
 
 #endif // !PORT_SCANNER_DEF

@@ -1,5 +1,12 @@
 #include "../../gui/src/gui.h"
-
+#include <thread>
+#include <utility>
+#include "../../srcs/include/errors.h"
+#include "../../srcs/include/mac.h"
+#include "../../srcs/include/ip.h"
+#include "../../srcs/include/host_addr.h"
+#include "../../srcs/include/scheduler.h"
+#include "../../srcs/include/port_scanner.h"
 /*
 void get_cmdl_args(int argc, char **argv, std::string& interface, ether_addr &ownmac, sockaddr_in &ip,
         sockaddr_in &mask, short &mask_prefix, std::string& net)
@@ -44,39 +51,20 @@ int main(int argc, char **argv)
     manager.SetIps(ip_set);
     manager.SetInterface(interface);
     manager.AddNode(own_node);
-    EventSelector selector;
-    Scheduler* scheduler = new Scheduler(selector, manager);
-    Pinger* pinger = new Pinger(*scheduler, ip_set);
-    Arper* arper = new Arper(*scheduler);
-    FindGate* gate = new FindGate(*scheduler);
-    PortScanner* scanner = new PortScanner(*scheduler, "192.168.1.15", "192.168.1.1");
-    scheduler->AddOrdinaryTask(pinger);
-    scheduler->AddOrdinaryTask(arper);
-    scheduler->AddOrdinaryTask(gate);
-    scheduler->AddOrdinaryTask(scanner);
-    selector.AddEvent(scheduler);
-    selector.StartSelecting(100);
-    std::for_each(manager.GetMap().begin(), manager.GetMap().end(),
-        [](std::pair<std::string, NetNode> n){
-            printf("Ip: %s, mac: %s, type: %s", n.first.c_str(), 
-            n.second.mac_address.c_str(), n.second.type.c_str());
-            if(!n.second.name.empty())
-                printf(", name: %s", n.second.name.c_str());
-            if(!n.second.vendor.empty())
-                printf(", vendor: %s", n.second.vendor.c_str());
-            if(!n.second.ports.empty()){
-                printf("here");
-            }
-            putchar('\n');
-        });
     return 0;
 }
 */
 
+
 int main()
 {
-    NetGuardUserInterface n; 
+    EventSelector selector;
+    NodesManager manager; 
+    Scheduler* schedule = new Scheduler(selector, manager);
+    std::thread guard([&selector]{selector.StartSelecting();});
+    NetGuardUserInterface n(schedule);
     n.show();
-    return Fl::run();
+    Fl::run();
+    guard.join();
+    return 0;
 }
-

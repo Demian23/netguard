@@ -7,7 +7,7 @@ OBJS=$(patsubst $(SRC)/%.cpp, $(OBJ)/%.o, $(SRCS))
 
 all:$(OBJS)
 
-release:CPPFLAGS= -Wall -O1 -std=c++11
+release:CPPFLAGS= -Wall -O2 -std=c++11
 release: clean
 release:$(OBJS) 
 

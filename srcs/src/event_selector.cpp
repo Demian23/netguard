@@ -11,6 +11,7 @@ void EventSelector::AddEvent(IEvent *e)
         events.resize(index + 1);
     events[index] = e;
 }
+
 void EventSelector::EndSelecting(){end_selecting = true;}
 void EventSelector::DeleteEvent(IEvent *e)
 {
@@ -18,8 +19,10 @@ void EventSelector::DeleteEvent(IEvent *e)
     delete events[index];
     events[index] = 0;
 }
+void EventSelector::SetTimeout(int t){timeout = t;}
+int EventSelector::GetTimeout()const{return timeout;}
 EventSelector::~EventSelector(){std::for_each(events.begin(), events.end(), [](IEvent* e){if(e)delete e;});}
-void EventSelector::StartSelecting(int timeout)
+void EventSelector::StartSelecting()
 {
     if(timeout < -1) return;
     end_selecting = false;
@@ -39,7 +42,7 @@ void EventSelector::StartSelecting(int timeout)
             if(polling.fds[i].revents & POLLIN)
                 events[i]->OnRead();
             if(polling.fds[i].revents & POLLOUT)
-                events[i]->OnRead();
+                events[i]->OnWrite();
             if(events[i] && events[i]->ListeningEvents() & Events::Timeout && ret == 0)
                 events[i]->OnTimeout();
             if(events[i] && events[i]->ListeningEvents() & Events::Any)

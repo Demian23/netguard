@@ -12,13 +12,12 @@
 #include <FL/Fl_Button.H>
 #include <FL/Fl_Check_Browser.H>
 #include <FL/Fl_Choice.H>
-#include <FL/Fl_Spinner.H>
-#include <FL/Fl_File_Browser.H>
 #include <FL/Fl_Progress.H>
+#include "../../srcs/include/scheduler.h"
 
 class NetGuardUserInterface {
 public:
-  NetGuardUserInterface();
+  NetGuardUserInterface(Scheduler* a_sched);
   Fl_Double_Window *main_window;
   Fl_Tabs *tbs_main;
   Fl_Group *grp_nodes;
@@ -33,20 +32,13 @@ public:
   Fl_Check_Browser *brws_ports;
   Fl_Group *grp_settings;
   Fl_Choice *choice_interface;
-private:
-  inline void cb_choice_interface_i(Fl_Choice*, void*);
-  static void cb_choice_interface(Fl_Choice*, void*);
-public:
-  Fl_Spinner *spn_first_ip;
-  Fl_Spinner *spn_end_ip;
-  Fl_File_Browser *file_chc_save;
-  Fl_File_Browser *fille_chc_licence;
   Fl_Output *out_own_net;
   Fl_Output *out_own_mask;
   Fl_Button *btn_scan;
   Fl_Progress *progress;
   Fl_Output *out_own_mac;
+  Scheduler* schedule;
   void show();
+  void updateNodesBrowser();
 };
-#include "gui_helper.h"
 #endif

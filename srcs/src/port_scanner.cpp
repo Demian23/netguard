@@ -2,134 +2,121 @@
 #include "../include/errors.h"
 #include "../include/ip.h"
 
-class SynReciver final : public IEvent{
-private:
-    enum{buffer_size = 1024};
-    ports_storage& ports;
-    char* buffer;
+class Scanner : public IEvent{
     int fd;
+    sockaddr_in own_addr;
+    sockaddr_in dest_addr;
+    uint16_t src_port;
+    uint16_t dest_port;
+    short repeat_request;
+    PortCondition cond;
     bool end;
+    bool ready_to_change_dest_port;
 public:
-    SynReciver(ports_storage& some_ports);
+    Scanner(uint16_t src_port, sockaddr_in src_addr, sockaddr_in dest) 
+        : own_addr(src_addr), dest_addr(dest), dest_port(-1), repeat_request(0)
+        , cond(Unset), end(false), ready_to_change_dest_port(false) 
+    {
+        //check ret val
+        raw_packets::make_raw_socket(fd, IPPROTO_TCP);
+        int flags = fcntl(fd, F_GETFL);
+        fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+    }
     void OnRead()override; 
-    void OnWrite()override{}
-    void OnError()override{errors::SysRet(""); end = true;}
+    void OnWrite()override;
+    void OnError()override{errors::Sys("Scanner fail"); end = true;}
     void OnTimeout()override{}
     void OnAnyEvent()override{}
-    short ListeningEvents() const override{return Read + Error;} 
+    short ListeningEvents() const override{return Read + Write;}; 
     void ResetEvents(int events)override{}
     int GetDescriptor()const override{return fd;}
     bool End() const override{return end;}
+    void ChangeDestPort(uint16_t p){
+        dest_port = p; cond = Unset; 
+        ready_to_change_dest_port = false; repeat_request = false;
+        repeat_request = 0;
+    }
+    uint16_t GetDestPort()const {return dest_port;}
+    bool IsReady()const {return ready_to_change_dest_port;}
+    PortCondition GetPortCond() const {return cond;}
     void SetEnd(){end = true;}
-    virtual ~SynReciver(){close(fd); delete[] buffer;}
 };
 
-SynReciver::SynReciver(ports_storage& some_ports) : ports(some_ports)
+void Scanner::OnWrite()
 {
-    //exception
-    raw_packets::make_raw_socket(fd, IPPROTO_IP);
-//    if(!raw_packets::bind_socket_to_interface(fd, 
-//        "en0"))
-//        errors::Dump("");
-    buffer = new char[buffer_size];
-    int flags = fcntl(fd, F_GETFL);
-    fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+    if(!end && !ready_to_change_dest_port){
+        if(repeat_request != 3){
+            raw_packets::send_tcp_flag(fd, own_addr, &dest_addr, src_port, dest_port, TH_SYN); 
+            repeat_request++;
+        }else {
+           cond = Filtered; 
+           ready_to_change_dest_port = true;
+        }
+    }
 }
 
-void SynReciver::OnRead()
+void Scanner::OnRead()
 {
     bool end_read;
     sockaddr_in from;
-    from.sin_addr.s_addr = 0;
     do{
-        ssize_t len = raw_packets::recieve_packet(fd, buffer, buffer_size, &from);
+        char read_buffer[1024] = {};
+        ssize_t len = raw_packets::recieve_packet(fd, read_buffer, 1024, &from);
         end_read = len == -1;
         if(!end_read){
-            if(raw_packets::get_syn_answer(buffer, len, &from)){
-                uint16_t key = ntohs(from.sin_port);
-                if(ports.find(key) != ports.end())
-                    ports[key] = Open;
-            } else {
-                if(from.sin_addr.s_addr != 0){
-                    uint16_t key = ntohs(from.sin_port);
-                    if(ports.find(key) != ports.end())
-                        ports[key] = Closed;
-                }
+            bool syn_res = raw_packets::get_syn_answer(read_buffer, len, &from);
+            if(from.sin_addr.s_addr == dest_addr.sin_addr.s_addr
+                && from.sin_port == dest_port){
+                if(syn_res){
+                    cond = Open;
+                    raw_packets::send_tcp_flag(fd, own_addr, &dest_addr, src_port, dest_port, TH_RST);
+                } else 
+                    cond = Closed;
             }
         }
     }while(!end_read);
 }
 
-PortScanner::PortScanner(Scheduler& a_master, const std::string& src_ip, const std::string& dest_ip, 
-    ScanMode mode) : master(a_master)
+PortScanner::PortScanner(Scheduler& a_master, const std::string& src_ip, 
+    const std::string& dest_ip, ports_storage& ports_to_scan) 
+    : master(a_master), ports(ports_to_scan)
 {
-    ports = GeneratePorts(mode);    
-    ports_iterator = ports.begin();
-    // exeption
-    raw_packets::make_raw_socket(sd, IPPROTO_TCP);
-    dest.sin_addr = IP::str_to_ip(dest_ip.c_str());
-    dest.sin_family = AF_INET;
-    src.sin_addr = IP::str_to_ip(src_ip.c_str());
-    src.sin_family = AF_INET;
-}
-
-ports_storage PortScanner::GeneratePorts(ScanMode mode)
-{
-    ports_storage m; 
-    if(mode == All){
-        m.reserve(1000);
-        for(int i = 0; i < 1000; i++)
-            m[i] = PortCondition::Unset;  // is it necessery?
-    } else {
-        errors::Msg("No such port scanning mode");
+    src = {.sin_family = AF_INET, .sin_addr = IP::str_to_ip(src_ip.c_str())};
+    dest= {.sin_family = AF_INET, .sin_addr = IP::str_to_ip(dest_ip.c_str())};
+    ports_it = ports.begin();
+    scanners = new Scanner*[scanners_size];
+    uint16_t src_port = 53322; // find free port
+    for(int i = 0; ports_it != ports.end() && i < scanners_size; i++){
+        Scanner* new_scanner = new Scanner(src_port, src, dest);
+        src_port++;
+        new_scanner->ChangeDestPort(ports_it->first);
+        scanners[i] = new_scanner;
+        master.AddToSelector(new_scanner);
     }
-    return m;
 }
 
-int PortScanner::RepeatSynRequests()
+bool PortScanner::UrgentExecute()
 {
-    int i = 0; 
-    std::vector<uint16_t>::iterator it = last_sended.begin();
-    while(it != last_sended.end()){
-        if(ports[last_sended[i]] == Unset){
-           raw_packets::send_tcp_flag(sd, src, 
-                &dest, default_src_port, last_sended[i], TH_SYN); 
-           ports[last_sended[i]] = Repeat;
-           i++;
-           it++;
+    bool result = false;    
+    int zero_scanners_counter = 0;
+    for(int i = 0; i < scanners_size; i++)
+        if(scanners[i]){
+            if(scanners[i]->IsReady()){
+                ports[scanners[i]->GetDestPort()] = scanners[i]->GetPortCond();
+                if(ports_it != ports.end()){
+                    scanners[i]->ChangeDestPort(ports_it->first);
+                    ports_it++;
+                } else {
+                    scanners[i]->SetEnd();
+                    scanners[i] = 0; 
+                }
+            }
         } else {
-            if(ports[last_sended[i]] == Repeat)
-                ports[last_sended[i]] = Filtered;
-            if(ports[last_sended[i]] == Open)
-               raw_packets::send_tcp_flag(sd, src, 
-                    &dest, default_src_port, last_sended[i], TH_RST); 
-            it = last_sended.erase(it);
+           zero_scanners_counter++; 
         }
-    }
-    return i;
-}
-
-bool PortScanner::Execute() 
-{
-    if(reciever == 0){
-        reciever = new SynReciver(ports);
-        master.AddToSelector(reciever);
-    }
-    int i = RepeatSynRequests();
-    bool result = false;
-    if(ports_iterator != ports.end())
-        for(;i < send_in_time && ports_iterator != ports.end(); i++, ports_iterator++){
-           raw_packets::send_tcp_flag(sd, src, &dest, default_src_port, 
-                ports_iterator->first, TH_SYN); 
-           last_sended.push_back(ports_iterator->first);
-        }
-    if(i == 0){
-        static_cast<SynReciver*>(reciever)->SetEnd();
-        std::string temp = inet_ntoa(dest.sin_addr);
-        if(!temp.empty()) 
-            master.manager.GetMap()[temp].ports = ports;
-        result = true;
+    if(zero_scanners_counter == scanners_size){
+       delete[] scanners;
+       result = true;
     }
     return result;
 }
-PortScanner::~PortScanner(){close(sd);}

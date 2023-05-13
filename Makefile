@@ -15,7 +15,7 @@ clean:
 	$(MAKE) clean -C gui 
 	$(MAKE) clean -C build 
 
-test: 
+tests: 
 	$(MAKE) -C srcs
 	$(MAKE) -C test
 

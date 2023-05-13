@@ -9,7 +9,7 @@ LIB_GUI=-L/opt/homebrew/Cellar/fltk/1.3.8_1/lib/ -lfltk
 
 all:$(OBJ) $(OBJS) 
 
-release: CPPFLAGS=-Wall -std=c++11 $(INC_GUI)
+release: CPPFLAGS=-Wall -O2 -std=c++11 $(INC_GUI)
 release:$(OBJ) $(OBJS)
 
 $(BIN): $(OBJS)
@@ -23,9 +23,8 @@ $(OBJ):
 
 gui: 
 	fluid -c $(SRC)/gui.fl
-	mv gui.cpp src/
-	mv gui.h src/
+	mv gui.cpp src/old_code/gui_cpp.o
+	mv gui.h src/old_code/gui_h.o
 
 clean: 
 	$(RM) -rf $(OBJ)/*
-	$(RM) $(SRC)/gui.cpp $(SRC)/gui.h
