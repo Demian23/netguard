@@ -1,4 +1,5 @@
 #include "../include/scheduler.h"
+#include <csignal>
 
 Scheduler::Scheduler(EventSelector& sel, NodesManager& m)
     : manager(m), selector(sel), descriptor(2), is_end(false)
@@ -9,6 +10,8 @@ Scheduler::Scheduler(EventSelector& sel, NodesManager& m)
 void Scheduler::WakeUp()
 {
     selector.SetTimeout(200);
+    signal(SIGUSR1, [](int n){});
+    pthread_kill(thread_id, SIGUSR1);
 }
 
 void Scheduler::AddOrdinaryTask(Task *t){schedule.push(t);}
@@ -43,7 +46,7 @@ void Scheduler::OnAnyEvent()
             TakeOffUrgentTask();
     } else {
         if(schedule.empty())
-            selector.SetTimeout(20000); // go sleep
+            selector.SetTimeout(-1); // go sleep
                                      // need to call method that will add new tasks or go sleep changing timeout
 //            selector.EndSelecting();
     }
@@ -70,4 +73,4 @@ Scheduler::~Scheduler()
 
 void Scheduler::AddToSelector(IEvent *e){selector.AddEvent(e);}
 //prepare to end
-void Scheduler::EndSchedulingAndSelecting(){selector.EndSelecting();}
+void Scheduler::EndSchedulingAndSelecting(){WakeUp();selector.EndSelecting();}

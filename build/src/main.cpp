@@ -1,12 +1,11 @@
 #include "../../gui/src/gui.h"
-#include <thread>
-#include <utility>
 #include "../../srcs/include/errors.h"
 #include "../../srcs/include/mac.h"
 #include "../../srcs/include/ip.h"
 #include "../../srcs/include/host_addr.h"
 #include "../../srcs/include/scheduler.h"
 #include "../../srcs/include/port_scanner.h"
+#include <pthread.h>
 /*
 void get_cmdl_args(int argc, char **argv, std::string& interface, ether_addr &ownmac, sockaddr_in &ip,
         sockaddr_in &mask, short &mask_prefix, std::string& net)
@@ -55,16 +54,19 @@ int main(int argc, char **argv)
 }
 */
 
+void* scan_thr_f(void*d){EventSelector* sel = reinterpret_cast<EventSelector*>(d); sel->StartSelecting();return 0;}
 
 int main()
 {
     EventSelector selector;
     NodesManager manager; 
     Scheduler* schedule = new Scheduler(selector, manager);
-    std::thread guard([&selector]{selector.StartSelecting();});
+    pthread_t scan_thread;
+    pthread_create(&scan_thread, 0, scan_thr_f, &selector); 
+    schedule->SetThreadId(scan_thread);
     NetGuardUserInterface n(schedule);
     n.show();
     Fl::run();
-    guard.join();
+    pthread_join(scan_thread, 0);
     return 0;
 }

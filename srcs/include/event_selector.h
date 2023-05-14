@@ -18,7 +18,7 @@ struct poll_arr{
 
 class EventSelector{
 public:
-    EventSelector() : timeout(200), end_selecting(false){}
+    EventSelector() : timeout(-1), end_selecting(false){}
     void AddEvent(IEvent* e);
     void DeleteEvent(IEvent* e);
     void StartSelecting();

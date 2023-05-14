@@ -1,6 +1,7 @@
 #include "../../srcs/include/host_addr.h"
 #include "../../srcs/include/pinger.h"
 #include "../../srcs/include/ip.h"
+#include "../../srcs/include/mac.h"
 #include "../../srcs/include/arper.h"
 #include "../../srcs/include/router.h"
 #include "gui_engine.h"
@@ -65,7 +66,17 @@ void clbk_full_scan(Fl_Widget *w, void *data)
     n->schedule->manager.SetInterface(n->choice_interface->text());
     n->schedule->manager.SetIps(IP::all_net_ipv4(IP::ipv4_net(n->out_own_net->value(), n->out_own_mask->value()), 0, 
         IP::ip_amount(IP::mask_prefix(n->out_own_mask->value()))));
+    NetNode own_device;
+    own_device.ipv4_address = n->out_own_net->value();
+    own_device.type = "Own host";
+    own_device.name = host_addr::get_own_name();
+    own_device.mac_address = n->out_own_mac->value();
+    ether_addr* temp = ether_aton(own_device.mac_address.c_str());
+    own_device.vendor = MAC::get_vendor(*temp);
+    n->schedule->manager.AddNode(own_device);
     n->schedule->AddOrdinaryTask(new Pinger(*n->schedule, new PingerStatistic(n->progress)));
+    n->schedule->AddOrdinaryTask(new Arper(*n->schedule));
+    n->schedule->AddOrdinaryTask(new FindGate(*n->schedule));
     n->schedule->AddOrdinaryTask(new UpdateNodes(n));
     n->schedule->WakeUp();
 }
@@ -82,5 +93,19 @@ void clbk_main_window(Fl_Widget* w, void* data)
         case 1: 
               break;
         
+    }
+}
+
+void clbk_nodes_brws(Fl_Widget *w, void *data)
+{
+    NetGuardUserInterface* n = reinterpret_cast<NetGuardUserInterface*>(data); 
+    int line = n->brws_nodes->value();
+    if(line){
+        void* node_data = n->brws_nodes->data(line);
+        NetNode* node = reinterpret_cast<NetNode*>(node_data);
+        n->out_ip->value(node->ipv4_address.c_str());
+        n->out_mac->value(node->mac_address.c_str());
+        n->out_vendor->value(node->vendor.c_str());
+        n->out_name->value(node->name.c_str());
     }
 }

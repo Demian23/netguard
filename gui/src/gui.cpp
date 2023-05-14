@@ -17,6 +17,7 @@ NetGuardUserInterface::NetGuardUserInterface(Scheduler* a_sched) : schedule(a_sc
           brws_nodes->type(2);
           brws_nodes->labelsize(18);
           brws_nodes->textsize(18);
+          brws_nodes->callback(clbk_nodes_brws, this);
         } // Fl_Browser* brws_nodes
         { grp_node_info = new Fl_Group(295, 80, 690, 550, "Node info");
           grp_node_info->box(FL_UP_BOX);
@@ -106,6 +107,6 @@ void NetGuardUserInterface::updateNodesBrowser()
     const NetMap& map = schedule->manager.GetMap();
     brws_nodes->clear();
     for(NetMap::const_iterator it = map.begin(); it != map.end(); it++){
-       brws_nodes->add(it->first.c_str()); 
+       brws_nodes->add(it->first.c_str(), (void*)&it->second); 
     }
 }

@@ -7,6 +7,7 @@
 #include <queue>
 #include <set>
 #include <string>
+#include <pthread.h>
 
 class Task{
 public:
@@ -47,11 +48,13 @@ public:
     void AddToSelector(IEvent* e);
     void WakeUp();
     void EndSchedulingAndSelecting();
+    void SetThreadId(pthread_t id){thread_id = id;}
     NodesManager& manager;
 private:
     EventSelector& selector;
     std::queue<Task*> schedule;
     std::queue<UrgentTask*> urgent_schedule;
+    pthread_t thread_id;
     int descriptor;
     bool is_end;
 };
