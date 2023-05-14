@@ -52,7 +52,7 @@ void clbk_choice_interface(Fl_Widget* w, void* data)
     host_addr::interface_map::const_iterator it = interfaces.find(interface);
     if(it != interfaces.end()){
         n->out_own_mac->value(it->second.mac.c_str());
-        n->out_own_net->value(it->second.net.c_str());
+        n->out_own_ip->value(it->second.net.c_str());
         n->out_own_mask->value(it->second.mask.c_str());
     } else {
         fl_alert("%s now is off.", interface.c_str());
@@ -64,15 +64,18 @@ void clbk_full_scan(Fl_Widget *w, void *data)
 {
     NetGuardUserInterface* n = reinterpret_cast<NetGuardUserInterface*>(data); 
     n->schedule->manager.SetInterface(n->choice_interface->text());
-    n->schedule->manager.SetIps(IP::all_net_ipv4(IP::ipv4_net(n->out_own_net->value(), n->out_own_mask->value()), 0, 
-        IP::ip_amount(IP::mask_prefix(n->out_own_mask->value()))));
+    auto set = IP::all_net_ipv4(IP::ipv4_net(n->out_own_ip->value(), n->out_own_mask->value()), 0, 
+        IP::ip_amount(IP::mask_prefix(n->out_own_mask->value())));
     NetNode own_device;
-    own_device.ipv4_address = n->out_own_net->value();
+    own_device.ipv4_address = n->out_own_ip->value();
     own_device.type = "Own host";
     own_device.name = host_addr::get_own_name();
     own_device.mac_address = n->out_own_mac->value();
+    own_device.is_active = true;
     ether_addr* temp = ether_aton(own_device.mac_address.c_str());
     own_device.vendor = MAC::get_vendor(*temp);
+    set.erase(own_device.ipv4_address);
+    n->schedule->manager.SetIps(set);
     n->schedule->manager.AddNode(own_device);
     n->schedule->AddOrdinaryTask(new Pinger(*n->schedule, new PingerStatistic(n->progress)));
     n->schedule->AddOrdinaryTask(new Arper(*n->schedule));
@@ -107,5 +110,6 @@ void clbk_nodes_brws(Fl_Widget *w, void *data)
         n->out_mac->value(node->mac_address.c_str());
         n->out_vendor->value(node->vendor.c_str());
         n->out_name->value(node->name.c_str());
+        n->out_type->value(node->type.c_str());
     }
 }

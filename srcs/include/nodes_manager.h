@@ -15,6 +15,7 @@ struct NetNode{
     std::string vendor;
     std::string type;
     ports_storage ports;
+    bool is_active;
     NetNode() : type("Host"){}
 };
 class NodesManager{

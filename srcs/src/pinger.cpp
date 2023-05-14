@@ -107,16 +107,14 @@ void Pinger::UpdateDevices()
 {
     const std::set<std::string>& ip_set = static_cast<RecvEcho*>(reciver)->GetIps();
     std::set<std::string>::const_iterator ip_set_it = ip_set.begin();
-    NetMap& map = master.manager.GetMap();
     for(;ip_set_it != ip_set.end(); ip_set_it++){
-        if(map.find(*ip_set_it) == map.end()){
-            NetNode new_node; 
-            new_node.ipv4_address = *ip_set_it;
-            sockaddr_in temp;temp.sin_family = AF_INET; 
-            temp.sin_addr = IP::str_to_ip(new_node.ipv4_address.c_str());
-            new_node.name = IP::get_name(&temp);
-            master.manager.AddNode(new_node);
-        }
+        NetNode new_node; 
+        new_node.is_active = true;
+        new_node.ipv4_address = *ip_set_it;
+        sockaddr_in temp;temp.sin_family = AF_INET; 
+        temp.sin_addr = IP::str_to_ip(new_node.ipv4_address.c_str());
+        new_node.name = IP::get_name(&temp);
+        master.manager.AddNode(new_node);
     }
     reinterpret_cast<RecvEcho*>(reciver)->SetEnd();
 }

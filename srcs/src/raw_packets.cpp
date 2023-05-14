@@ -110,7 +110,7 @@ bool send_tcp_flag(int sockfd, const sockaddr_in& src, sockaddr_in* dest,
     char packet[default_buffer_size] = {}; 
     bool res = true;
     int packet_len = prepare_tcp_packet(packet, src.sin_addr, 
-        dest->sin_addr, default_send_port, dest_port, TH_SYN);
+        dest->sin_addr, src_port, dest_port, TH_SYN);
     int opt = 1;
     ssize_t ret = setsockopt(sockfd, IPPROTO_IP, IP_HDRINCL, &opt, 
         sizeof(int));

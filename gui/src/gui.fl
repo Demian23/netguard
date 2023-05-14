@@ -4,7 +4,7 @@ header_name {gui.h}
 code_name {gui.cpp}
 class NetGuardUserInterface {open
 } {
-  Function {NetGuardUserInterface()} {open selected
+  Function {NetGuardUserInterface()} {open
   } {
     Fl_Window main_window {
       label NetGuard open
@@ -26,7 +26,7 @@ class NetGuardUserInterface {open
             xywh {295 80 690 550} box UP_BOX color 42 labelsize 18 align 2
           } {
             Fl_Output out_name {
-              label name
+              label name selected
               xywh {330 110 170 40} labelsize 18 align 5 textsize 18
             }
             Fl_Output out_ip {
@@ -41,17 +41,21 @@ class NetGuardUserInterface {open
               label vendor
               xywh {330 290 170 40} labelsize 18 align 5 textsize 18
             }
-            Fl_Light_Button btn_is_active {
-              label Active
-              xywh {330 350 100 30} selection_color 79 labelsize 18 when 3 deactivate
-            }
             Fl_Button btn_ports_scan {
               label {scan ports}
-              xywh {330 400 100 35} labelsize 18
+              xywh {782 575 100 35} labelsize 18
             }
             Fl_Check_Browser brws_ports {
               label ports
-              xywh {705 111 245 478} type Hold labelsize 18 textsize 18
+              xywh {705 111 245 390} type Hold labelsize 18 textsize 18
+            }
+            Fl_Progress ports_scan_progress {
+              label scanning
+              xywh {705 535 245 30} labelsize 18
+            }
+            Fl_Output out_type {
+              label type
+              xywh {330 350 170 40} labelsize 18 align 5 textsize 18
             }
           }
         }
@@ -63,8 +67,8 @@ class NetGuardUserInterface {open
             label interface open
             xywh {100 70 120 30} down_box BORDER_BOX labelsize 18 textsize 18
           } {}
-          Fl_Output out_own_net {
-            label net
+          Fl_Output out_own_ip {
+            label ip
             xywh {80 130 135 30} labelsize 18 textsize 18
           }
           Fl_Output out_own_mask {

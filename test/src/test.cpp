@@ -1,10 +1,12 @@
 #include <algorithm>
 #include <gtest/gtest.h>
 #include <iostream>
+#include <sys/socket.h>
 #include "../../srcs/include/raw_packets.h"
 #include "../../srcs/include/host_addr.h"
 #include "../../srcs/include/scheduler.h"
 #include "../../srcs/include/port_scanner.h"
+#include "../../srcs/include/errors.h"
 #include "../../srcs/include/ip.h"
 
 TEST(HostAddrSuit, GetNetInterfaces){
@@ -16,31 +18,17 @@ TEST(HostAddrSuit, GetNetInterfaces){
             "\nMask: "<< it->second.mask << "\nMac: " << it->second.mac <<"\n\n";
 }
 
-TEST(PortScannerSuit, PortScannerTest){
-    EventSelector selector;
-    NodesManager m;
-    Scheduler* scheduler = new Scheduler(selector, m);
-    selector.AddEvent(scheduler);
-    ports_storage ports;
-    for(int i = 0; i < 20; i++)
-        ports.insert(std::make_pair(i, Unset));
-    PortScanner* scanner = new PortScanner(*scheduler, "192.168.1.15", "192.168.1.1", ports);
-    scheduler->AddUrgentTask(scanner);
-    selector.SetTimeout(100);
-    selector.StartSelecting();
-    std::for_each(ports.begin(), ports.end(), [](std::pair<uint16_t, PortCondition> p){
-        std::cout << p.first << " " << p.second << '\t';
-    });
-}
-
 TEST(PortScannerSuit, RecieveSendAnswer){
    int fd; 
    char buffer[1024]={};
    sockaddr_in t;
-   sockaddr_in src = {.sin_family = AF_INET, .sin_addr = IP::str_to_ip("192.168.1.15")};
+   sockaddr_in src = {.sin_family = AF_INET, .sin_addr = IP::str_to_ip("192.168.1.218")};
    sockaddr_in dest = {.sin_family = AF_INET, .sin_addr = IP::str_to_ip("192.168.1.1")};
+//   src.sin_port = htons(50345);
    raw_packets::make_raw_socket(fd, IPPROTO_TCP);
-   raw_packets::send_tcp_flag(fd, src, &dest, 5009, 12, TH_SYN);
+//   if(-1==bind(fd, (sockaddr*)&src, sizeof(src)))
+//       errors::Sys("");
+   raw_packets::send_tcp_flag(fd, src, &dest, 50345, 12, TH_SYN);
    ssize_t res_len = raw_packets::recieve_packet(fd, buffer, 1024, &t);
    ASSERT_NE(res_len, -1);
    raw_packets::get_syn_answer(buffer, res_len, &src);

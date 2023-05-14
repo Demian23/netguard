@@ -44,20 +44,22 @@ NetGuardUserInterface::NetGuardUserInterface(Scheduler* a_sched) : schedule(a_sc
             out_vendor->textsize(18);
             out_vendor->align(Fl_Align(FL_ALIGN_TOP_LEFT));
           } // Fl_Output* out_vendor
-          { btn_is_active = new Fl_Light_Button(330, 350, 100, 30, "Active");
-            btn_is_active->selection_color((Fl_Color)79);
-            btn_is_active->labelsize(18);
-            btn_is_active->when(3);
-            btn_is_active->deactivate();
-          } // Fl_Light_Button* btn_is_active
-          { btn_ports_scan = new Fl_Button(330, 400, 100, 35, "scan ports");
+          { btn_ports_scan = new Fl_Button(782, 575, 100, 35, "scan ports");
             btn_ports_scan->labelsize(18);
           } // Fl_Button* btn_ports_scan
-          { brws_ports = new Fl_Check_Browser(705, 111, 245, 478, "ports");
+          { brws_ports = new Fl_Check_Browser(705, 111, 245, 390, "ports");
             brws_ports->type(2);
             brws_ports->labelsize(18);
             brws_ports->textsize(18);
           } // Fl_Check_Browser* brws_ports
+          { ports_scan_progress = new Fl_Progress(705, 535, 245, 30, "scanning");
+            ports_scan_progress->labelsize(18);
+          } // Fl_Progress* ports_scan_progress
+          { out_type = new Fl_Output(330, 350, 170, 40, "type");
+            out_type->labelsize(18);
+            out_type->textsize(18);
+            out_type->align(Fl_Align(FL_ALIGN_TOP_LEFT));
+          } // Fl_Output* out_type
           grp_node_info->end();
         } // Fl_Group* grp_node_info
         grp_nodes->end();
@@ -72,10 +74,10 @@ NetGuardUserInterface::NetGuardUserInterface(Scheduler* a_sched) : schedule(a_sc
           choice_interface->callback(clbk_choice_interface, this);
           init_interface_choices(choice_interface);
         } // Fl_Choice* choice_interface
-        { out_own_net = new Fl_Output(80, 130, 135, 30, "net");
-          out_own_net->labelsize(18);
-          out_own_net->textsize(18);
-        } // Fl_Output* out_own_net
+        { out_own_ip = new Fl_Output(80, 130, 135, 30, "ip");
+          out_own_ip->labelsize(18);
+          out_own_ip->textsize(18);
+        } // Fl_Output* out_own_ip
         { out_own_mask = new Fl_Output(80, 180, 135, 30, "mask");
           out_own_mask->labelsize(18);
           out_own_mask->textsize(18);
@@ -106,7 +108,11 @@ void NetGuardUserInterface::updateNodesBrowser()
 {
     const NetMap& map = schedule->manager.GetMap();
     brws_nodes->clear();
-    for(NetMap::const_iterator it = map.begin(); it != map.end(); it++){
-       brws_nodes->add(it->first.c_str(), (void*)&it->second); 
+    int i = 0;
+    for(NetMap::const_iterator it = map.begin(); it != map.end(); it++, i++){
+        if(it->second.is_active)
+            brws_nodes->insert(i, (it->first + " (on)").c_str(), (void*)&it->second);
+        else
+            brws_nodes->insert(i, (it->first + " (off)").c_str(), (void*)&it->second);
     }
 }

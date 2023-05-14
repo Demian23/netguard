@@ -8,7 +8,14 @@ void NodesManager::AddNode(const NetNode &node)
 
 void NodesManager::SetInterface(const std::string &a_interface)
 {
-    interface = a_interface;
+    if(interface != a_interface){
+        nodes_map.clear();
+        interface = a_interface;
+    } else {
+        for (auto& node : nodes_map) {
+            node.second.is_active = false; 
+        }
+    }
 }
 
 void NodesManager::SetIps(const std::set<std::string> &ips)

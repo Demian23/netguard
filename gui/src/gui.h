@@ -27,12 +27,13 @@ public:
   Fl_Output *out_ip;
   Fl_Output *out_mac;
   Fl_Output *out_vendor;
-  Fl_Light_Button *btn_is_active;
   Fl_Button *btn_ports_scan;
   Fl_Check_Browser *brws_ports;
+  Fl_Progress *ports_scan_progress;
+  Fl_Output *out_type;
   Fl_Group *grp_settings;
   Fl_Choice *choice_interface;
-  Fl_Output *out_own_net;
+  Fl_Output *out_own_ip;
   Fl_Output *out_own_mask;
   Fl_Button *btn_scan;
   Fl_Progress *progress;
