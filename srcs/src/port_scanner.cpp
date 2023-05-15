@@ -7,16 +7,16 @@ namespace{
 
 int create_tcp_socket(sockaddr_in& address_bind_to)
 {
-   int res = 0; 
-   res = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-   if(res != -1){
+    int res = 0; 
+    res = socket(AF_INET, SOCK_STREAM, 0);
+    if(res != -1){
         int flags = fcntl(res, F_GETFL);
         fcntl(res, F_SETFL, flags | O_NONBLOCK);
-       while(-1 == bind(res, (sockaddr*) &address_bind_to, sizeof(address_bind_to)))
+        while(-1 == bind(res, (sockaddr*) &address_bind_to, sizeof(address_bind_to)))
             address_bind_to.sin_port++;
-   } else 
+    } else 
         errors::Sys("tcp socket creation fail");
-   return res;
+    return res;
 }
 
 void connect_process(int sd, const sockaddr_in& dest_addr, PortCondition& cond)
@@ -27,9 +27,12 @@ void connect_process(int sd, const sockaddr_in& dest_addr, PortCondition& cond)
    } else {
         if(errno == ECONNREFUSED)
             cond = Closed;
+        if(errno == EADDRNOTAVAIL)
+            errors::SysRet("Addr not avail");
+        else
+            errors::SysRet("%d", errno);
    }
 }
-
 
 };
 
@@ -46,8 +49,6 @@ public:
         : dest_addr(dest), dest_port(-1), repeat_request(0)
         , cond(Unset), end(false), ready_to_change_dest_port(false) 
     {
-        //check ret val
-        //raw_packets::make_raw_socket(fd, IPPROTO_TCP);
         fd = create_tcp_socket(src_addr);
     }
     void OnRead()override{} 
@@ -74,7 +75,7 @@ public:
 void Scanner::OnAnyEvent()
 {
     if(!end && !ready_to_change_dest_port){
-        if(repeat_request != 3){
+        if(repeat_request < 3){
             connect_process(fd, dest_addr, cond);
             repeat_request++;
         }else {
@@ -85,15 +86,15 @@ void Scanner::OnAnyEvent()
 }
 
 PortScanner::PortScanner(Scheduler& a_master, const std::string& src_ip, 
-    const std::string& dest_ip, const ports_storage& ports_to_scan, Statistic* stat) 
-    : master(a_master), ports(ports_to_scan), statistic(stat)
+    const std::string& dest_ip, Statistic* stat) 
+    : master(a_master), statistic(stat), dest_ip_str(dest_ip)
 {
     src = {.sin_family = AF_INET, .sin_addr = IP::str_to_ip(src_ip.c_str())};
     dest= {.sin_family = AF_INET, .sin_addr = IP::str_to_ip(dest_ip.c_str())};
     src.sin_port = htons(50000);
-    ports_it = ports.begin();
+    ports_it = master.manager.GetMap()[dest_ip_str].ports.begin();
     scanners = new Scanner*[scanners_size];
-    for(int i = 0; ports_it != ports.end() && i < scanners_size; i++){
+    for(int i = 0; ports_it != master.manager.GetMap()[dest_ip_str].ports.end() && i < scanners_size; i++){
         Scanner* new_scanner = new Scanner(src, dest);
         src.sin_port++;
         new_scanner->ChangeDestPort(ports_it->first);
@@ -109,8 +110,8 @@ bool PortScanner::UrgentExecute()
     for(int i = 0; i < scanners_size; i++)
         if(scanners[i]){
             if(scanners[i]->IsReady()){
-                ports[scanners[i]->GetDestPort()] = scanners[i]->GetPortCond();
-                if(ports_it != ports.end()){
+                master.manager.GetMap()[dest_ip_str].ports[scanners[i]->GetDestPort()] = scanners[i]->GetPortCond();
+                if(ports_it != master.manager.GetMap()[dest_ip_str].ports.end()){
                     scanners[i]->ChangeDestPort(ports_it->first);
                     ports_it++;
                     statistic->RecordStatistic(this);
@@ -126,12 +127,11 @@ bool PortScanner::UrgentExecute()
         delete statistic;
         delete[] scanners;
         result = true;
-        master.manager.GetMap()[inet_ntoa(dest.sin_addr)].ports = ports;
     }
     return result;
 }
 
 int PortScanner::GetCurrentCount()const
 {
-    return std::distance<ports_storage::const_iterator>(ports.begin(), ports_it);
+    return std::distance<ports_storage::const_iterator>(master.manager.GetMap()[dest_ip_str].ports.begin(), ports_it);
 }

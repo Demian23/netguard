@@ -137,11 +137,13 @@ void NetGuardUserInterface::updateNodesBrowser()
 void NetGuardUserInterface::updatePortsBrowser(const std::string& destination)
 {
     brws_ports->clear();
-    NetMap& temp = schedule->manager.GetMap();
-    for(auto& port : temp[destination].ports){
+    const ports_storage& temp = 
+        schedule->manager.GetMap()[destination].ports;
+    for(ports_storage::const_iterator it = temp.begin(); 
+            it != temp.end(); it++){
         char buffer[64] = {};
-        int len = IP::itoa(port.first, buffer);
-        sprintf(buffer + len, " %s", ports_conditions[port.second]);
+        int len = IP::itoa(it->first, buffer);
+        sprintf(buffer + len, " %s", ports_conditions[it->second]);
         brws_ports->add(buffer);
     }
 }

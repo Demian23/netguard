@@ -59,7 +59,7 @@ public:
     bool Execute()override{return true;}
 private:
     NetGuardUserInterface* interface;
-    const std::string& dest;
+    std::string dest;
 };
 
 void init_interface_choices(Fl_Choice *choice)
@@ -152,9 +152,8 @@ void clbk_port_scan(Fl_Widget* w, void *data)
     NetGuardUserInterface* n = reinterpret_cast<NetGuardUserInterface*>(data); 
     std::string dest_ip = n->out_ip->value();
     std::string src_ip = n->out_own_ip->value();
-    NetMap& temp = n->schedule->manager.GetMap();
     n->schedule->AddUrgentTask(new PortScanner(*n->schedule, src_ip, dest_ip, 
-        temp[dest_ip].ports, new PortScannerStatistic(n->ports_scan_progress)));
+        new PortScannerStatistic(n->ports_scan_progress)));
     n->schedule->AddUrgentTask(new UpdatePorts(n, dest_ip));
     n->schedule->WakeUp();
 }
