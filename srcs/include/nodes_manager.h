@@ -5,6 +5,7 @@
 #include <set>
 
 enum PortCondition{Unset, Open, Closed, Filtered};
+extern const char* ports_conditions[];
 struct NetNode;
 typedef std::unordered_map<uint16_t, PortCondition> ports_storage;
 typedef std::unordered_map<std::string, NetNode> NetMap;
@@ -16,7 +17,7 @@ struct NetNode{
     std::string type;
     ports_storage ports;
     bool is_active;
-    NetNode() : type("Host"){}
+    NetNode();
 };
 class NodesManager{
 public:

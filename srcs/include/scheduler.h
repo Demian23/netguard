@@ -22,10 +22,10 @@ public:
     virtual ~UrgentTask(){}
 };
 
-class Statictic{
+class Statistic{
 public:
     virtual void RecordStatistic(Task* task) = 0;
-    virtual ~Statictic(){}
+    virtual ~Statistic(){}
 };
 
 class Scheduler : public IEvent{

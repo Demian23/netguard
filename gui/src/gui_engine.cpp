@@ -4,11 +4,12 @@
 #include "../../srcs/include/mac.h"
 #include "../../srcs/include/arper.h"
 #include "../../srcs/include/router.h"
+#include "../../srcs/include/port_scanner.h"
 #include "gui_engine.h"
 
 #include "gui.h"
 
-class PingerStatistic : public Statictic{
+class PingerStatistic : public Statistic{
 public:
     PingerStatistic(Fl_Progress *progress):progress_bar(progress){}
     void RecordStatistic(Task *task) override;
@@ -25,12 +26,40 @@ void PingerStatistic::RecordStatistic(Task *task)
     Fl::awake();
 }
 
+class PortScannerStatistic : public Statistic{
+public:
+    PortScannerStatistic(Fl_Progress* port_progress) : port_progress_bar(port_progress){}
+    void RecordStatistic(Task* task)override;
+    virtual ~PortScannerStatistic(){port_progress_bar->value(port_progress_bar->minimum());}
+private:
+    Fl_Progress* port_progress_bar;
+};
+
+void PortScannerStatistic::RecordStatistic(Task *task)
+{
+    PortScanner* p = static_cast<PortScanner*>(task);
+    float percent = (float)p->GetCurrentCount() * 100 / p->GetPortsSize();
+    port_progress_bar->value(percent);
+    Fl::awake();
+}
+
 class UpdateNodes : public Task{
 public:
     UpdateNodes(NetGuardUserInterface* n) : interface(n){}
     bool Execute()override{interface->updateNodesBrowser(); return true;}
 private: 
     NetGuardUserInterface* interface;
+};
+
+class UpdatePorts : public UrgentTask{
+public:
+    UpdatePorts(NetGuardUserInterface* n, const std::string& destination)
+        : interface(n), dest(destination){}
+    bool UrgentExecute()override{interface->updatePortsBrowser(dest);return true;}
+    bool Execute()override{return true;}
+private:
+    NetGuardUserInterface* interface;
+    const std::string& dest;
 };
 
 void init_interface_choices(Fl_Choice *choice)
@@ -52,8 +81,12 @@ void clbk_choice_interface(Fl_Widget* w, void* data)
     host_addr::interface_map::const_iterator it = interfaces.find(interface);
     if(it != interfaces.end()){
         n->out_own_mac->value(it->second.mac.c_str());
-        n->out_own_ip->value(it->second.net.c_str());
+        n->out_own_ip->value(it->second.ip.c_str());
         n->out_own_mask->value(it->second.mask.c_str());
+        std::string net = IP::ipv4_net(it->second.ip, it->second.mask);
+        n->out_net->value(net.c_str());
+        n->first_ip->value(IP::first_ip(net).c_str());
+        n->last_ip->value(IP::last_ip(net, it->second.mask).c_str());
     } else {
         fl_alert("%s now is off.", interface.c_str());
         init_interface_choices(n->choice_interface); 
@@ -64,8 +97,8 @@ void clbk_full_scan(Fl_Widget *w, void *data)
 {
     NetGuardUserInterface* n = reinterpret_cast<NetGuardUserInterface*>(data); 
     n->schedule->manager.SetInterface(n->choice_interface->text());
-    auto set = IP::all_net_ipv4(IP::ipv4_net(n->out_own_ip->value(), n->out_own_mask->value()), 0, 
-        IP::ip_amount(IP::mask_prefix(n->out_own_mask->value())));
+    std::set<std::string> ip_set = 
+        IP::all_ipv4_from_range(n->first_ip->value(),n->last_ip->value());
     NetNode own_device;
     own_device.ipv4_address = n->out_own_ip->value();
     own_device.type = "Own host";
@@ -74,8 +107,8 @@ void clbk_full_scan(Fl_Widget *w, void *data)
     own_device.is_active = true;
     ether_addr* temp = ether_aton(own_device.mac_address.c_str());
     own_device.vendor = MAC::get_vendor(*temp);
-    set.erase(own_device.ipv4_address);
-    n->schedule->manager.SetIps(set);
+    ip_set.erase(own_device.ipv4_address);
+    n->schedule->manager.SetIps(ip_set);
     n->schedule->manager.AddNode(own_device);
     n->schedule->AddOrdinaryTask(new Pinger(*n->schedule, new PingerStatistic(n->progress)));
     n->schedule->AddOrdinaryTask(new Arper(*n->schedule));
@@ -113,3 +146,16 @@ void clbk_nodes_brws(Fl_Widget *w, void *data)
         n->out_type->value(node->type.c_str());
     }
 }
+
+void clbk_port_scan(Fl_Widget* w, void *data)
+{
+    NetGuardUserInterface* n = reinterpret_cast<NetGuardUserInterface*>(data); 
+    std::string dest_ip = n->out_ip->value();
+    std::string src_ip = n->out_own_ip->value();
+    NetMap& temp = n->schedule->manager.GetMap();
+    n->schedule->AddUrgentTask(new PortScanner(*n->schedule, src_ip, dest_ip, 
+        temp[dest_ip].ports, new PortScannerStatistic(n->ports_scan_progress)));
+    n->schedule->AddUrgentTask(new UpdatePorts(n, dest_ip));
+    n->schedule->WakeUp();
+}
+

@@ -6,7 +6,7 @@
 
 class Pinger : public Task{
 public:
-    Pinger(Scheduler& m, Statictic* stat);
+    Pinger(Scheduler& m, Statistic* stat);
     bool Execute() override;
     inline int GetIpsSize() const{return ips_set.size();}
     int GetCurrentCount() const;
@@ -14,7 +14,7 @@ public:
 private:
     enum{send_in_time = 8};
     Scheduler& master;
-    Statictic* statistic;
+    Statistic* statistic;
     const std::set<std::string>& ips_set;
     std::set<std::string>::const_iterator it;
     int* send_icmp_sd;

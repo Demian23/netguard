@@ -8,7 +8,7 @@
 
 namespace host_addr{
     struct interface_params{
-        std::string net;
+        std::string ip;
         std::string mask;
         std::string mac;
     };

@@ -58,7 +58,7 @@ void RecvEcho::OnAnyEvent(){}
 short RecvEcho::ListeningEvents() const {return Read + Error;}
 void RecvEcho::ResetEvents(int events){}
 
-Pinger::Pinger(Scheduler& m, Statictic* stat)
+Pinger::Pinger(Scheduler& m, Statistic* stat)
     : master(m), statistic(stat), ips_set(master.manager.GetIpSet()), reciver(0)
 {
     it = ips_set.begin();

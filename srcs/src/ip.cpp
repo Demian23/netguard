@@ -8,6 +8,18 @@
 
 namespace IP{
 
+
+std::set<std::string> all_ipv4_from_range(const std::string &first, const std::string &last)
+{
+    uint32_t first_ip = ipv4_to_number(first);
+    uint32_t last_ip = ipv4_to_number(last);
+    std::set<std::string> res;
+    for(uint32_t iter = first_ip; iter <= last_ip; iter++){
+        res.insert(number_to_ipv4(iter));
+    }
+    return res;
+}
+
 std::string get_name(sockaddr_in* addr)
 {
     char buff[NI_MAXHOST];
@@ -24,7 +36,6 @@ in_addr str_to_ip(const char *ip_str)
     return res;
 }
 
-static int itoa(int n, char s[]);
 short mask_prefix(const std::string& mask)
 {
     short mask_len = 0;
@@ -79,6 +90,17 @@ std::set<std::string> all_net_ipv4(const std::string& net, uint32_t start,
     return res; 
 }
 
+std::string first_ip(const std::string& net)
+{
+    return number_to_ipv4(ipv4_to_number(net)+1);
+}
+
+std::string last_ip(const std::string& net, const std::string& mask)
+{
+    int interval_size = ip_amount(mask_prefix(mask));    
+    return number_to_ipv4(ipv4_to_number(net) + interval_size);
+}
+
 uint32_t ipv4_to_number(const std::string& ip)
 {
     uint32_t res = 0; int start = 0, end = 0;
@@ -126,7 +148,7 @@ static void reverse(char s[])
 	}
 }
 
-static int itoa(int n, char s[])
+int itoa(int n, char s[])
 {
 	int i, sign;
 

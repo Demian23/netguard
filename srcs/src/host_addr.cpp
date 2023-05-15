@@ -45,7 +45,7 @@ interface_map get_net_interfaces()
                 in_addr ip, mask; 
                 ip = reinterpret_cast<sockaddr_in*>(temp->ifa_addr)->sin_addr;
                 mask =reinterpret_cast<sockaddr_in*>(temp->ifa_netmask)->sin_addr; 
-                result[temp->ifa_name].net = inet_ntoa(ip);
+                result[temp->ifa_name].ip = inet_ntoa(ip);
                 result[temp->ifa_name].mask = inet_ntoa(mask);
             }
         }
@@ -54,7 +54,7 @@ interface_map get_net_interfaces()
         errors::SysRet("Unsuccessful interface retrieve");
     }   
     for(host_addr::interface_map::iterator it = result.begin(); it != result.end();){
-        if(it->second.mac.empty() || it->second.net.empty() || it->second.mask.empty())
+        if(it->second.mac.empty() || it->second.ip.empty() || it->second.mask.empty())
             it = result.erase(it);
         else it++;
     }

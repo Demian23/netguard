@@ -38,8 +38,12 @@ public:
   Fl_Button *btn_scan;
   Fl_Progress *progress;
   Fl_Output *out_own_mac;
+  Fl_Input *first_ip;
+  Fl_Input *last_ip;
+  Fl_Output *out_net;
   Scheduler* schedule;
   void show();
   void updateNodesBrowser();
+  void updatePortsBrowser(const std::string& destination);
 };
 #endif

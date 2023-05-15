@@ -1,6 +1,15 @@
 #include "../include/nodes_manager.h"
 #include "../include/errors.h"
 
+const char* ports_conditions[] = {"Unset", "Open", "Closed", "Filtered"};
+
+NetNode::NetNode() : type("Host")
+{
+    for(int i = 1; i < 1001; i++){
+        ports.emplace(i, Unset); 
+    }
+}
+
 void NodesManager::AddNode(const NetNode &node)
 {
     nodes_map[node.ipv4_address] = node;

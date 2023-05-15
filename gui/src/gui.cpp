@@ -2,6 +2,10 @@
 
 #include "gui.h"
 #include "gui_engine.h"
+#include "../../srcs/include/ip.h"
+#include "../../srcs/include/port_scanner.h"
+#include <cstdio>
+#include <string>
 
 NetGuardUserInterface::NetGuardUserInterface(Scheduler* a_sched) : schedule(a_sched) {
   { main_window = new Fl_Double_Window(1030, 700, "NetGuard");
@@ -46,6 +50,7 @@ NetGuardUserInterface::NetGuardUserInterface(Scheduler* a_sched) : schedule(a_sc
           } // Fl_Output* out_vendor
           { btn_ports_scan = new Fl_Button(782, 575, 100, 35, "scan ports");
             btn_ports_scan->labelsize(18);
+            btn_ports_scan->callback(clbk_port_scan, this);
           } // Fl_Button* btn_ports_scan
           { brws_ports = new Fl_Check_Browser(705, 111, 245, 390, "ports");
             brws_ports->type(2);
@@ -74,25 +79,37 @@ NetGuardUserInterface::NetGuardUserInterface(Scheduler* a_sched) : schedule(a_sc
           choice_interface->callback(clbk_choice_interface, this);
           init_interface_choices(choice_interface);
         } // Fl_Choice* choice_interface
-        { out_own_ip = new Fl_Output(80, 130, 135, 30, "ip");
+        { out_own_ip = new Fl_Output(80, 130, 160, 30, "ip");
           out_own_ip->labelsize(18);
           out_own_ip->textsize(18);
         } // Fl_Output* out_own_ip
-        { out_own_mask = new Fl_Output(80, 180, 135, 30, "mask");
+        { out_own_mask = new Fl_Output(80, 180, 160, 30, "mask");
           out_own_mask->labelsize(18);
           out_own_mask->textsize(18);
         } // Fl_Output* out_own_mask
-        { btn_scan = new Fl_Button(80, 450, 155, 40, "full scan");
+        { btn_scan = new Fl_Button(190, 450, 155, 40, "full scan");
           btn_scan->labelsize(18);
           btn_scan->callback(clbk_full_scan, this);
         } // Fl_Button* btn_scan
-        { progress = new Fl_Progress(80, 400, 300, 30, "scan progress");
+        { progress = new Fl_Progress(80, 400, 380, 30, "scan progress");
           progress->labelsize(18);
         } // Fl_Progress* progress
-        { out_own_mac = new Fl_Output(80, 230, 135, 30, "mac");
+        { out_own_mac = new Fl_Output(80, 230, 160, 30, "mac");
           out_own_mac->labelsize(18);
           out_own_mac->textsize(18);
         } // Fl_Output* out_own_mac
+        { first_ip = new Fl_Input(80, 340, 135, 30, "first");
+          first_ip->labelsize(18);
+          first_ip->textsize(18);
+        } // Fl_Input* first_ip
+        { last_ip = new Fl_Input(300, 340, 135, 30, "last");
+          last_ip->labelsize(18);
+          last_ip->textsize(18);
+        } // Fl_Input* last_ip
+        { out_net = new Fl_Output(80, 280, 160, 30, "net");
+          out_net->labelsize(18);
+          out_net->textsize(18);
+        } // Fl_Output* out_net
         grp_settings->end();
       } // Fl_Group* grp_settings
       tbs_main->end();
@@ -114,5 +131,17 @@ void NetGuardUserInterface::updateNodesBrowser()
             brws_nodes->insert(i, (it->first + " (on)").c_str(), (void*)&it->second);
         else
             brws_nodes->insert(i, (it->first + " (off)").c_str(), (void*)&it->second);
+    }
+}
+
+void NetGuardUserInterface::updatePortsBrowser(const std::string& destination)
+{
+    brws_ports->clear();
+    NetMap& temp = schedule->manager.GetMap();
+    for(auto& port : temp[destination].ports){
+        char buffer[64] = {};
+        int len = IP::itoa(port.first, buffer);
+        sprintf(buffer + len, " %s", ports_conditions[port.second]);
+        brws_ports->add(buffer);
     }
 }

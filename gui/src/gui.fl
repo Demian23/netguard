@@ -8,14 +8,14 @@ class NetGuardUserInterface {open
   } {
     Fl_Window main_window {
       label NetGuard open
-      xywh {326 67 1030 700} type Double color 47 labelcolor 1 size_range {1030 700 1030 700} visible
+      xywh {58 200 1030 700} type Double color 47 labelcolor 1 size_range {1030 700 1030 700} visible
     } {
       Fl_Tabs tbs_main {open
         xywh {20 25 995 645} labelsize 18
       } {
         Fl_Group grp_nodes {
           label Nodes open
-          xywh {20 55 995 615} labelsize 18
+          xywh {20 55 995 615} labelsize 18 hide
         } {
           Fl_Browser brws_nodes {
             label {Nodes list}
@@ -26,7 +26,7 @@ class NetGuardUserInterface {open
             xywh {295 80 690 550} box UP_BOX color 42 labelsize 18 align 2
           } {
             Fl_Output out_name {
-              label name selected
+              label name
               xywh {330 110 170 40} labelsize 18 align 5 textsize 18
             }
             Fl_Output out_ip {
@@ -61,7 +61,7 @@ class NetGuardUserInterface {open
         }
         Fl_Group grp_settings {
           label Settings open
-          xywh {20 50 995 620} labelsize 18 hide
+          xywh {20 50 995 620} labelsize 18
         } {
           Fl_Choice choice_interface {
             label interface open
@@ -69,23 +69,35 @@ class NetGuardUserInterface {open
           } {}
           Fl_Output out_own_ip {
             label ip
-            xywh {80 130 135 30} labelsize 18 textsize 18
+            xywh {80 130 160 30} labelsize 18 textsize 18
           }
           Fl_Output out_own_mask {
             label mask
-            xywh {80 180 135 30} labelsize 18 textsize 18
+            xywh {80 180 160 30} labelsize 18 textsize 18
           }
           Fl_Button btn_scan {
             label {full scan}
-            xywh {80 450 155 40} labelsize 18
+            xywh {190 450 155 40} labelsize 18
           }
           Fl_Progress progress {
             label {scan progress}
-            xywh {80 400 300 30} labelsize 18
+            xywh {80 400 380 30} labelsize 18
           }
           Fl_Output out_own_mac {
             label mac
-            xywh {80 230 135 30} labelsize 18 textsize 18
+            xywh {80 230 160 30} labelsize 18 textsize 18
+          }
+          Fl_Input first_ip {
+            label first
+            xywh {80 340 160 30} labelsize 18 textsize 18
+          }
+          Fl_Input last_ip {
+            label last selected
+            xywh {300 340 160 30} labelsize 18 textsize 18
+          }
+          Fl_Output out_net {
+            label net
+            xywh {80 280 160 30} labelsize 18 textsize 18
           }
         }
       }
