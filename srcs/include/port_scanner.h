@@ -7,20 +7,19 @@
 class Scanner;
 class PortScanner final : public UrgentTask{
 public:
-    PortScanner(Scheduler& a_master, const std::string& src_ip, 
-        const std::string& dest_ip, Statistic* stat);
+    PortScanner(Scheduler& a_master, ports_storage& a_ports, const 
+        std::string& dest_ip, Statistic* stat);
     bool UrgentExecute() override;
     bool Execute()override{return true;}
-    inline int GetPortsSize() const{return master.manager.GetMap()[dest_ip_str].ports.size();}
+    inline int GetPortsSize() const{return ports.size();}
     int GetCurrentCount() const;
 private:
-    enum{scanners_size = 20};
+    enum{scanners_size = 10};
     Scheduler& master;
+    ports_storage& ports;
     ports_storage::iterator ports_it;
     Scanner** scanners;
     Statistic* statistic;
-    std::string dest_ip_str;
-    sockaddr_in src;
     sockaddr_in dest;
 };
 

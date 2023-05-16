@@ -119,17 +119,19 @@ void clbk_full_scan(Fl_Widget *w, void *data)
 
 void clbk_main_window(Fl_Widget* w, void* data)
 {
+    /*
     switch(fl_choice("Do you wanna leave?", "Yep", "No, mistake", 0)){
         case 0: {
-            NetGuardUserInterface* n = reinterpret_cast<NetGuardUserInterface*>(data); 
-            n->schedule->EndSchedulingAndSelecting();
-            n->main_window->hide();
             break;
                 }
         case 1: 
               break;
         
     }
+    */
+    NetGuardUserInterface* n = reinterpret_cast<NetGuardUserInterface*>(data); 
+    n->schedule->EndSchedulingAndSelecting();
+    n->main_window->hide();
 }
 
 void clbk_nodes_brws(Fl_Widget *w, void *data)
@@ -152,7 +154,8 @@ void clbk_port_scan(Fl_Widget* w, void *data)
     NetGuardUserInterface* n = reinterpret_cast<NetGuardUserInterface*>(data); 
     std::string dest_ip = n->out_ip->value();
     std::string src_ip = n->out_own_ip->value();
-    n->schedule->AddUrgentTask(new PortScanner(*n->schedule, src_ip, dest_ip, 
+    n->schedule->AddUrgentTask(new PortScanner(*n->schedule, 
+        n->schedule->manager.GetMap()[dest_ip].ports, dest_ip, 
         new PortScannerStatistic(n->ports_scan_progress)));
     n->schedule->AddUrgentTask(new UpdatePorts(n, dest_ip));
     n->schedule->WakeUp();

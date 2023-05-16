@@ -5,7 +5,7 @@ const char* ports_conditions[] = {"Unset", "Open", "Closed", "Filtered"};
 
 NetNode::NetNode() : type("Host")
 {
-    for(int i = 1; i < 1001; i++){
+    for(int i = 1; i < 41; i++){
         ports.emplace(i, Unset); 
     }
 }

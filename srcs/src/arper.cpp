@@ -4,6 +4,7 @@
 #include <cstring>
 #include "../include/mac.h"
 #include "../include/ip.h"
+#include <unistd.h>
 Arper::Arper(Scheduler& m) : master(m){}
 
 bool Arper::Execute()
@@ -35,5 +36,6 @@ bool Arper::Execute()
         }
     }
     delete[] bpf_buffer;
+    close(fd);
     return true;
 }
