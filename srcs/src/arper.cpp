@@ -32,6 +32,7 @@ bool Arper::Execute()
             if(find){
                 it->second.mac_address = MAC::mac_to_string(p.mac);
                 it->second.vendor = MAC::get_vendor(p.mac);
+                master.manager.Change();
             }
         }
     }

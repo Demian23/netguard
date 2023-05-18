@@ -58,16 +58,23 @@ void RecvEcho::OnAnyEvent(){}
 short RecvEcho::ListeningEvents() const {return Read + Error;}
 void RecvEcho::ResetEvents(int events){}
 
-Pinger::Pinger(Scheduler& m, Statistic* stat)
-    : master(m), statistic(stat), ips_set(master.manager.GetIpSet()), reciver(0)
+Pinger::Pinger(Scheduler& m, Statistic* stat, Mode mode)
+    : master(m), statistic(stat), ips_set(master.manager.GetIpSet()), reciver(0), send_in_time(0)
 {
     it = ips_set.begin();
+    if(mode == Slow)
+        send_in_time = 1;
+    else{
+        send_in_time = ips_set.size() / 32 + 1;  
+        if(send_in_time > 0xFF)
+            send_in_time = 0xFF;
+    }
     send_icmp_sd = new int[send_in_time];
 }
 
 Pinger::~Pinger()
 {
-    delete statistic;
+    if(statistic)delete statistic;
     delete[] send_icmp_sd;
 }
 
@@ -79,7 +86,8 @@ bool Pinger::Execute()
         master.AddToSelector(reciver);
     } else {
         bool is_send = SendEcho();
-        statistic->RecordStatistic(this);
+        if(statistic)
+            statistic->RecordStatistic(this);
         if(!is_send){
             UpdateDevices();
             result = true;
@@ -107,6 +115,10 @@ void Pinger::UpdateDevices()
 {
     const std::set<std::string>& ip_set = static_cast<RecvEcho*>(reciver)->GetIps();
     std::set<std::string>::const_iterator ip_set_it = ip_set.begin();
+    for (auto& node : master.manager.GetMap()) {
+        if(node.second.type != "Own host")
+            node.second.is_active = false; 
+    }
     for(;ip_set_it != ip_set.end(); ip_set_it++){
         NetNode new_node; 
         new_node.is_active = true;

@@ -29,5 +29,8 @@ namespace IP{
     std::string last_ip(const std::string& net, const std::string& mask);
     std::string first_ip(const std::string& net);
     std::set<std::string> all_ipv4_from_range(const std::string &first, const std::string &last);
+    bool check_ip_range(const std::string& net, const std::string& mask, const std::string& first,
+        const std::string& last);
+    bool is_valid_ip_string(const std::string& ip_string);
 };
 #endif

@@ -8,11 +8,14 @@
 #include <FL/Fl_Group.H>
 #include <FL/Fl_Browser.H>
 #include <FL/Fl_Output.H>
-#include <FL/Fl_Light_Button.H>
 #include <FL/Fl_Button.H>
 #include <FL/Fl_Check_Browser.H>
-#include <FL/Fl_Choice.H>
 #include <FL/Fl_Progress.H>
+#include <FL/Fl_Choice.H>
+#include <FL/Fl_Input.H>
+#include <FL/Fl_Light_Button.H>
+#include <FL/Fl_Text_Display.H>
+
 #include "../../srcs/include/scheduler.h"
 
 class NetGuardUserInterface {
@@ -29,9 +32,13 @@ public:
   Fl_Output *out_vendor;
   Fl_Button *btn_ports_scan;
   Fl_Check_Browser *brws_ports;
-  Fl_Browser *brws_scanned_ports;
   Fl_Progress *ports_scan_progress;
   Fl_Output *out_type;
+  Fl_Browser *brws_opened_ports;
+  Fl_Button *btn_clean_ports_brws;
+  Fl_Button *btn_choos_all_ports;
+  Fl_Browser *brws_filtered_ports;
+  Fl_Browser *brws_closed_ports;
   Fl_Group *grp_settings;
   Fl_Choice *choice_interface;
   Fl_Output *out_own_ip;
@@ -42,6 +49,8 @@ public:
   Fl_Input *first_ip;
   Fl_Input *last_ip;
   Fl_Output *out_net;
+  Fl_Light_Button *btn_active_mode;
+  Fl_Text_Display *log_display;
   Scheduler* schedule;
   void show();
   void updateNodesBrowser();

@@ -19,19 +19,25 @@ struct NetNode{
     bool is_active;
     NetNode();
 };
+
 class NodesManager{
 public:
     NetMap& GetMap();
     const std::set<std::string>& GetIpSet()const;
     void AddNode(const NetNode& node);
+    void AddPorts(const std::string& ip, const ports_storage& new_ports);
     void SetInterface(const std::string& a_interface);
     void SetIps(const std::set<std::string>& ips);
     const std::string& GetInterface() const;
     const NetNode& GetOwnNode()const;
+    bool IsChanged()const{return changed;}
+    void Updated(){changed = false;}
+    void Change(){changed = true;}
 private:
     std::unordered_map<std::string, NetNode> nodes_map;
     std::set<std::string> ip_set;
     std::string interface;
+    bool changed;
 };
 
 #endif // !NODES_MANAGER_DEF

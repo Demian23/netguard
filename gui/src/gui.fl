@@ -8,14 +8,14 @@ class NetGuardUserInterface {open
   } {
     Fl_Window main_window {
       label NetGuard open
-      xywh {396 227 1045 791} type Double color 47 labelcolor 1 size_range {1030 700 1030 700} visible
+      xywh {444 108 1045 791} type Double color 47 labelcolor 1 size_range {1030 700 1030 700} visible
     } {
       Fl_Tabs tbs_main {open
         xywh {15 15 1005 750} labelsize 18
       } {
         Fl_Group grp_nodes {
-          label Nodes open selected
-          xywh {15 40 1000 725} labelsize 18
+          label Nodes open
+          xywh {15 40 1000 725} labelsize 18 hide
         } {
           Fl_Browser brws_nodes {
             label {Nodes list}
@@ -43,7 +43,7 @@ class NetGuardUserInterface {open
             }
             Fl_Button btn_ports_scan {
               label {scan ports}
-              xywh {790 665 100 35} labelsize 18
+              xywh {715 657 100 35} labelsize 18
             }
             Fl_Check_Browser brws_ports {
               label {choose ports to scan}
@@ -51,57 +51,81 @@ class NetGuardUserInterface {open
             }
             Fl_Progress ports_scan_progress {
               label scanning
-              xywh {716 611 245 30} labelsize 18
+              xywh {570 600 380 35} labelsize 18
             }
             Fl_Output out_type {
               label type
               xywh {325 340 170 40} labelsize 18 align 5 textsize 18
             }
-            Fl_Browser brws_scanned_ports {
-              label ports
-              xywh {725 105 230 475} labelsize 18 textsize 18
+            Fl_Browser brws_opened_ports {
+              label Open
+              xywh {830 100 120 480} labelsize 18 align 1 textsize 18
+            }
+            Fl_Button btn_clean_ports_brws {
+              label {clean all}
+              xywh {415 670 80 40} labelsize 18
+            }
+            Fl_Button btn_choos_all_ports {
+              label {select all}
+              xywh {320 670 80 40} labelsize 18
+            }
+            Fl_Browser brws_filtered_ports {
+              label Filtered
+              xywh {700 100 120 480} labelsize 18 align 1 textsize 18
+            }
+            Fl_Browser brws_closed_ports {
+              label Closed
+              xywh {570 100 120 480} labelsize 18 align 1 textsize 18
             }
           }
         }
         Fl_Group grp_settings {
           label Settings open
-          xywh {20 50 995 710} labelsize 18 hide
+          xywh {20 50 1000 710} labelsize 18
         } {
           Fl_Choice choice_interface {
             label interface open
-            xywh {100 70 120 30} down_box BORDER_BOX labelsize 18 textsize 18
+            xywh {50 70 120 30} down_box BORDER_BOX labelsize 18 align 5 textsize 18
           } {}
           Fl_Output out_own_ip {
             label ip
-            xywh {80 130 160 30} labelsize 18 textsize 18
+            xywh {262 68 160 30} labelsize 18 align 5 textsize 18
           }
           Fl_Output out_own_mask {
             label mask
-            xywh {80 180 160 30} labelsize 18 textsize 18
+            xywh {262 130 160 30} labelsize 18 align 5 textsize 18
           }
           Fl_Button btn_scan {
             label {full scan}
-            xywh {190 450 155 40} labelsize 18
+            xywh {160 375 155 40} labelsize 18
           }
           Fl_Progress progress {
             label {scan progress}
-            xywh {80 400 380 30} labelsize 18
+            xywh {45 310 380 40} labelsize 18
           }
           Fl_Output out_own_mac {
             label mac
-            xywh {80 230 160 30} labelsize 18 textsize 18
+            xywh {263 185 160 30} labelsize 18 align 5 textsize 18
           }
           Fl_Input first_ip {
             label first
-            xywh {80 340 160 30} labelsize 18 textsize 18
+            xywh {50 136 160 30} labelsize 18 align 5 textsize 18
           }
           Fl_Input last_ip {
             label last
-            xywh {300 340 160 30} labelsize 18 textsize 18
+            xywh {50 195 160 30} labelsize 18 align 5 textsize 18
           }
           Fl_Output out_net {
             label net
-            xywh {80 280 160 30} labelsize 18 textsize 18
+            xywh {263 240 160 30} labelsize 18 align 5 textsize 18
+          }
+          Fl_Light_Button btn_active_mode {
+            label {active mode} selected
+            xywh {50 241 165 30} labelsize 18 align 16
+          }
+          Fl_Text_Display log_display {
+            label Logs
+            xywh {500 70 500 650} labelsize 18 textsize 18
           }
         }
       }

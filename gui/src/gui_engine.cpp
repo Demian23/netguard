@@ -9,6 +9,42 @@
 
 #include "gui.h"
 
+class GuiUpdater final : public IEvent{
+    static bool created;
+    NetGuardUserInterface& interface;
+    NodesManager& manager;
+    bool end;
+    GuiUpdater(NetGuardUserInterface& n, NodesManager& m) 
+        : interface(n), manager(m), end(false){}
+public:
+    void OnRead()override{} 
+    void OnWrite()override{}
+    void OnError()override{end = true;}
+    void OnTimeout()override{}
+    bool End()const override{return end;}
+    int GetDescriptor() const override{return 0;}
+    short ListeningEvents()const override{return Any;} 
+    void ResetEvents(int events) override{}
+    void OnAnyEvent()override;
+    static GuiUpdater* Make(NetGuardUserInterface& n);
+};
+
+bool GuiUpdater::created = false;
+
+GuiUpdater* GuiUpdater::Make(NetGuardUserInterface &n)
+{
+    if(!created){created = true;return new GuiUpdater(n, n.schedule->manager);}
+    else return 0;
+}
+
+void GuiUpdater::OnAnyEvent()
+{
+    if(manager.IsChanged()){
+        interface.updateNodesBrowser();
+        manager.Updated();
+    }
+}
+
 class PingerStatistic : public Statistic{
 public:
     PingerStatistic(Fl_Progress *progress):progress_bar(progress){}
@@ -42,14 +78,6 @@ void PortScannerStatistic::RecordStatistic(Task *task)
     port_progress_bar->value(percent);
     Fl::awake();
 }
-
-class UpdateNodes : public Task{
-public:
-    UpdateNodes(NetGuardUserInterface* n) : interface(n){}
-    bool Execute()override{interface->updateNodesBrowser(); return true;}
-private: 
-    NetGuardUserInterface* interface;
-};
 
 class UpdatePorts : public UrgentTask{
 public:
@@ -96,31 +124,37 @@ void clbk_choice_interface(Fl_Widget* w, void* data)
 void clbk_full_scan(Fl_Widget *w, void *data)
 {
     NetGuardUserInterface* n = reinterpret_cast<NetGuardUserInterface*>(data); 
-    n->schedule->manager.SetInterface(n->choice_interface->text());
-    std::string first_ip_string = n->first_ip->value();
-    std::string last_ip_string = n->last_ip->value();
-    if(IP::is_valid_ip_string(first_ip_string) && IP::is_valid_ip_string(last_ip_string) 
-    && IP::check_ip_range(n->out_net->value(), n->out_own_mask->value(), first_ip_string, last_ip_string)){
-        std::set<std::string> ip_set = 
-            IP::all_ipv4_from_range(first_ip_string, last_ip_string);
-        NetNode own_device;
-        own_device.ipv4_address = n->out_own_ip->value();
-        own_device.type = "Own host";
-        own_device.name = host_addr::get_own_name();
-        own_device.mac_address = n->out_own_mac->value();
-        own_device.is_active = true;
-        ether_addr* temp = ether_aton(own_device.mac_address.c_str());
-        own_device.vendor = MAC::get_vendor(*temp);
-        ip_set.erase(own_device.ipv4_address);
-        n->schedule->manager.SetIps(ip_set);
-        n->schedule->manager.AddNode(own_device);
-        n->schedule->AddOrdinaryTask(new Pinger(*n->schedule, new PingerStatistic(n->progress)));
-        n->schedule->AddOrdinaryTask(new Arper(*n->schedule));
-        n->schedule->AddOrdinaryTask(new FindGate(*n->schedule));
-        n->schedule->AddOrdinaryTask(new UpdateNodes(n));
-        n->schedule->WakeUp();
-    }else{
-        fl_alert("Wrong ip range!");
+    if(n->choice_interface->text()){
+        n->schedule->manager.SetInterface(n->choice_interface->text());
+        std::string first_ip_string = n->first_ip->value();
+        std::string last_ip_string = n->last_ip->value();
+        if(IP::is_valid_ip_string(first_ip_string) && IP::is_valid_ip_string(last_ip_string) 
+        && IP::check_ip_range(n->out_net->value(), n->out_own_mask->value(), first_ip_string, last_ip_string)){
+            std::set<std::string> ip_set = 
+                IP::all_ipv4_from_range(first_ip_string, last_ip_string);
+            IEvent* updater = GuiUpdater::Make(*n);
+            if(updater != 0)
+                n->schedule->AddToSelector(updater);
+            NetNode own_device;
+            own_device.ipv4_address = n->out_own_ip->value();
+            own_device.type = "Own host";
+            own_device.name = host_addr::get_own_name();
+            own_device.mac_address = n->out_own_mac->value();
+            own_device.is_active = true;
+            ether_addr* temp = ether_aton(own_device.mac_address.c_str());
+            own_device.vendor = MAC::get_vendor(*temp);
+            ip_set.erase(own_device.ipv4_address);
+            n->schedule->manager.SetIps(ip_set);
+            n->schedule->manager.AddNode(own_device);
+            n->schedule->AddOrdinaryTask(new Pinger(*n->schedule, new PingerStatistic(n->progress)));
+            n->schedule->AddOrdinaryTask(new Arper(*n->schedule));
+            n->schedule->AddOrdinaryTask(new FindGate(*n->schedule));
+            n->schedule->WakeUp();
+        }else{
+            fl_alert("Wrong ip range!");
+        }
+    } else {
+        fl_alert("Choose interface!");
     }
 }
 
@@ -153,7 +187,11 @@ void clbk_nodes_brws(Fl_Widget *w, void *data)
         n->out_vendor->value(node->vendor.c_str());
         n->out_name->value(node->name.c_str());
         n->out_type->value(node->type.c_str());
-        n->brws_scanned_ports->clear();
+        n->updatePortsBrowser(node->ipv4_address);
+        if(node->type != "Own host")
+            n->btn_ports_scan->activate();
+        else 
+            n->btn_ports_scan->deactivate();
     }
 }
 
@@ -173,9 +211,8 @@ void clbk_port_scan(Fl_Widget* w, void *data)
     std::string dest_ip = n->out_ip->value();
     std::string src_ip = n->out_own_ip->value();
     if(!dest_ip.empty()){
-        n->schedule->manager.GetMap()[dest_ip].ports = get_ports(n->brws_ports);
         n->schedule->AddUrgentTask(new PortScanner(*n->schedule, 
-          n->schedule->manager.GetMap()[dest_ip].ports, dest_ip, 
+          get_ports(n->brws_ports), dest_ip, 
             new PortScannerStatistic(n->ports_scan_progress)));
         n->schedule->AddUrgentTask(new UpdatePorts(n, dest_ip));
         n->schedule->WakeUp();
@@ -190,5 +227,27 @@ void init_brws_ports(Fl_Check_Browser *brws)
         char temp[6] = {};    
         IP::itoa(i, temp);
         brws->add(temp);
+    }
+}
+
+void clbk_clean_all(Fl_Widget *, void *data)
+{
+    Fl_Check_Browser* brws = reinterpret_cast<Fl_Check_Browser*>(data);
+    brws->check_none();
+}
+
+void clbk_select_all(Fl_Widget *, void *data)
+{
+    Fl_Check_Browser* brws = reinterpret_cast<Fl_Check_Browser*>(data);
+    brws->check_all();
+}
+
+void clbk_btn_active_mode(Fl_Widget *, void *data)
+{
+    NetGuardUserInterface* n = reinterpret_cast<NetGuardUserInterface*>(data); 
+    if(n->btn_active_mode->value()){
+        n->schedule->TurnOnActiveMode();
+    } else {
+        n->schedule->TurnOffActiveMode();
     }
 }

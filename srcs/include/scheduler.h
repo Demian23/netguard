@@ -11,14 +11,14 @@
 
 class Task{
 public:
-    virtual bool Execute() = 0;
+    virtual bool Execute(){return true;};
     virtual ~Task(){}
 };
 
 // task and urgent task should be never mixed
 class UrgentTask : public Task{
 public:
-    virtual bool UrgentExecute() = 0;
+    virtual bool UrgentExecute(){return true;}
     virtual ~UrgentTask(){}
 };
 
@@ -49,14 +49,19 @@ public:
     void WakeUp();
     void EndSchedulingAndSelecting();
     void SetThreadId(pthread_t id){thread_id = id;}
+    void TurnOnActiveMode();
+    void TurnOffActiveMode();
     NodesManager& manager;
 private:
     EventSelector& selector;
     std::queue<Task*> schedule;
     std::queue<UrgentTask*> urgent_schedule;
+    std::queue<Task*> iternal_schedule;
     pthread_t thread_id;
     int descriptor;
     bool is_end;
+    bool active_mode;
+    void SetIternalQueue();
 };
 
 

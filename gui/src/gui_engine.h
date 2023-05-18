@@ -11,5 +11,9 @@ void clbk_full_scan(Fl_Widget*w, void* data);
 void clbk_main_window(Fl_Widget* w, void* data);
 void clbk_nodes_brws(Fl_Widget* w, void* data);
 void clbk_port_scan(Fl_Widget* w, void *data);
+void clbk_select_all(Fl_Widget*, void* data);
+void clbk_clean_all(Fl_Widget*, void* data);
+void clbk_btn_active_mode(Fl_Widget*, void* data);
+
 
 #endif // !GUI_CALLBACKS_DEF

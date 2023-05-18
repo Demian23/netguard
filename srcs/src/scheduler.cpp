@@ -1,8 +1,11 @@
 #include "../include/scheduler.h"
 #include <csignal>
+#include "../include/pinger.h"
+#include "../include/arper.h"
+#include "../include/router.h"
 
 Scheduler::Scheduler(EventSelector& sel, NodesManager& m)
-    : manager(m), selector(sel), descriptor(2), is_end(false)
+    : manager(m), selector(sel), descriptor(2), is_end(false), active_mode(false)
 {
     selector.AddEvent(this);
 }
@@ -34,6 +37,14 @@ void Scheduler::OnTimeout()
         done = schedule.front()->Execute();
         if(done)
             TakeOffOrdinaryTask();
+    }else{
+        if(active_mode && !iternal_schedule.empty()){
+            done = iternal_schedule.front()->Execute();
+            if(done){
+                delete iternal_schedule.front();
+                iternal_schedule.pop();
+            } 
+        }
     }
 }
 
@@ -45,10 +56,15 @@ void Scheduler::OnAnyEvent()
         if(done)
             TakeOffUrgentTask();
     } else {
-        if(schedule.empty())
-            selector.SetTimeout(-1); // go sleep
-                                     // need to call method that will add new tasks or go sleep changing timeout
-//            selector.EndSelecting();
+        if(schedule.empty()){
+            if(active_mode){
+                if(iternal_schedule.empty()){
+                    SetIternalQueue();
+                }
+            }
+            else 
+                selector.SetTimeout(-1);     
+        }
     }
 }
 void Scheduler::OnError(){is_end = true;}
@@ -74,3 +90,20 @@ Scheduler::~Scheduler()
 void Scheduler::AddToSelector(IEvent *e){selector.AddEvent(e);}
 //prepare to end
 void Scheduler::EndSchedulingAndSelecting(){WakeUp();selector.EndSelecting();}
+
+void Scheduler::TurnOnActiveMode(){active_mode = true;SetIternalQueue();}
+void Scheduler::TurnOffActiveMode()
+{
+    active_mode = false; 
+    while(!iternal_schedule.empty()){
+        delete iternal_schedule.front();
+        iternal_schedule.pop();
+    }
+}
+
+void Scheduler::SetIternalQueue()
+{
+    iternal_schedule.push(new Pinger(*this, 0, Pinger::Slow));
+    iternal_schedule.push(new Arper(*this));
+    iternal_schedule.push(new FindGate(*this));
+}

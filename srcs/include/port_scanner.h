@@ -3,24 +3,27 @@
 
 #include "scheduler.h"
 #include "raw_packets.h"
-
-class Scanner;
+class TcpHandshakeAnalizer;
 class PortScanner final : public UrgentTask{
 public:
-    PortScanner(Scheduler& a_master, ports_storage& a_ports, const 
-        std::string& dest_ip, Statistic* stat);
+    PortScanner(Scheduler& a_master, const ports_storage& a_ports, 
+        const std::string& dest_ip_str, Statistic* stat);
     bool UrgentExecute() override;
-    bool Execute()override{return true;}
     inline int GetPortsSize() const{return ports.size();}
     int GetCurrentCount() const;
+    bool CheckPreviousPorts(); // if true, than can go on
 private:
-    enum{scanners_size = 10};
     Scheduler& master;
-    ports_storage& ports;
+    ports_storage ports;
     ports_storage::iterator ports_it;
-    Scanner** scanners;
     Statistic* statistic;
+    std::vector<uint16_t> previous_ports;
+    std::vector<TcpHandshakeAnalizer*> recivers;
+    sockaddr_in src;
     sockaddr_in dest;
+    int manual_sd;
+    short wait_counter;
+    int scanners_size;
 };
 
 #endif // !PORT_SCANNER_DEF

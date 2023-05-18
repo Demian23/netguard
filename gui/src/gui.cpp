@@ -16,6 +16,7 @@ NetGuardUserInterface::NetGuardUserInterface(Scheduler* a_sched) : schedule(a_sc
       tbs_main->labelsize(18);
       { grp_nodes = new Fl_Group(15, 40, 1000, 725, "Nodes");
         grp_nodes->labelsize(18);
+        grp_nodes->hide();
         { brws_nodes = new Fl_Browser(40, 70, 210, 655, "Nodes list");
           brws_nodes->type(2);
           brws_nodes->labelsize(18);
@@ -47,7 +48,7 @@ NetGuardUserInterface::NetGuardUserInterface(Scheduler* a_sched) : schedule(a_sc
             out_vendor->textsize(18);
             out_vendor->align(Fl_Align(FL_ALIGN_TOP_LEFT));
           } // Fl_Output* out_vendor
-          { btn_ports_scan = new Fl_Button(790, 665, 100, 35, "scan ports");
+          { btn_ports_scan = new Fl_Button(715, 657, 100, 35, "scan ports");
             btn_ports_scan->labelsize(18);
             btn_ports_scan->callback(clbk_port_scan, this);
           } // Fl_Button* btn_ports_scan
@@ -57,7 +58,7 @@ NetGuardUserInterface::NetGuardUserInterface(Scheduler* a_sched) : schedule(a_sc
             brws_ports->textsize(18);
             init_brws_ports(brws_ports);
           } // Fl_Check_Browser* brws_ports
-          { ports_scan_progress = new Fl_Progress(716, 611, 245, 30, "scanning");
+          { ports_scan_progress = new Fl_Progress(570, 600, 380, 35, "scanning");
             ports_scan_progress->labelsize(18);
           } // Fl_Progress* ports_scan_progress
           { out_type = new Fl_Output(325, 340, 170, 40, "type");
@@ -65,55 +66,89 @@ NetGuardUserInterface::NetGuardUserInterface(Scheduler* a_sched) : schedule(a_sc
             out_type->textsize(18);
             out_type->align(Fl_Align(FL_ALIGN_TOP_LEFT));
           } // Fl_Output* out_type
-          { brws_scanned_ports = new Fl_Browser(725, 105, 230, 475, "ports");
-            brws_scanned_ports->labelsize(18);
-            brws_scanned_ports->textsize(18);
-          } // Fl_Browser* brws_scanned_ports
+          { brws_opened_ports = new Fl_Browser(830, 100, 120, 480, "Open");
+            brws_opened_ports->labelsize(18);
+            brws_opened_ports->textsize(18);
+            brws_opened_ports->align(Fl_Align(FL_ALIGN_TOP));
+          } // Fl_Browser* brws_opened_ports
+          { btn_clean_ports_brws = new Fl_Button(415, 670, 80, 40, "clean all");
+            btn_clean_ports_brws->labelsize(18);
+            btn_clean_ports_brws->callback(clbk_clean_all, brws_ports);
+          } // Fl_Button* btn_clean_ports_brws
+          { btn_choos_all_ports = new Fl_Button(320, 670, 80, 40, "select all");
+            btn_choos_all_ports->labelsize(18);
+            btn_choos_all_ports->callback(clbk_select_all, brws_ports);
+          } // Fl_Button* btn_choos_all_ports
+          { brws_filtered_ports = new Fl_Browser(700, 100, 120, 480, "Filtered");
+            brws_filtered_ports->labelsize(18);
+            brws_filtered_ports->textsize(18);
+            brws_filtered_ports->align(Fl_Align(FL_ALIGN_TOP));
+          } // Fl_Browser* brws_filtered_ports
+          { brws_closed_ports = new Fl_Browser(570, 100, 120, 480, "Closed");
+            brws_closed_ports->labelsize(18);
+            brws_closed_ports->textsize(18);
+            brws_closed_ports->align(Fl_Align(FL_ALIGN_TOP));
+          } // Fl_Browser* brws_closed_ports
           grp_node_info->end();
         } // Fl_Group* grp_node_info
         grp_nodes->end();
       } // Fl_Group* grp_nodes
-      { grp_settings = new Fl_Group(20, 50, 995, 710, "Settings");
+      { grp_settings = new Fl_Group(20, 50, 1000, 710, "Settings");
         grp_settings->labelsize(18);
-        grp_settings->hide();
-        { choice_interface = new Fl_Choice(100, 70, 120, 30, "interface");
+        { choice_interface = new Fl_Choice(50, 70, 120, 30, "interface");
           choice_interface->down_box(FL_BORDER_BOX);
           choice_interface->labelsize(18);
           choice_interface->textsize(18);
+          choice_interface->align(Fl_Align(FL_ALIGN_TOP_LEFT));
           choice_interface->callback(clbk_choice_interface, this);
           init_interface_choices(choice_interface);
         } // Fl_Choice* choice_interface
-        { out_own_ip = new Fl_Output(80, 130, 160, 30, "ip");
+        { out_own_ip = new Fl_Output(262, 68, 160, 30, "ip");
           out_own_ip->labelsize(18);
           out_own_ip->textsize(18);
+          out_own_ip->align(Fl_Align(FL_ALIGN_TOP_LEFT));
         } // Fl_Output* out_own_ip
-        { out_own_mask = new Fl_Output(80, 180, 160, 30, "mask");
+        { out_own_mask = new Fl_Output(262, 130, 160, 30, "mask");
           out_own_mask->labelsize(18);
           out_own_mask->textsize(18);
+          out_own_mask->align(Fl_Align(FL_ALIGN_TOP_LEFT));
         } // Fl_Output* out_own_mask
-        { btn_scan = new Fl_Button(190, 450, 155, 40, "full scan");
+        { btn_scan = new Fl_Button(160, 375, 155, 40, "full scan");
           btn_scan->labelsize(18);
           btn_scan->callback(clbk_full_scan, this);
         } // Fl_Button* btn_scan
-        { progress = new Fl_Progress(80, 400, 380, 30, "scan progress");
+        { progress = new Fl_Progress(45, 310, 380, 40, "scan progress");
           progress->labelsize(18);
         } // Fl_Progress* progress
-        { out_own_mac = new Fl_Output(80, 230, 160, 30, "mac");
+        { out_own_mac = new Fl_Output(263, 185, 160, 30, "mac");
           out_own_mac->labelsize(18);
           out_own_mac->textsize(18);
+          out_own_mac->align(Fl_Align(FL_ALIGN_TOP_LEFT));
         } // Fl_Output* out_own_mac
-        { first_ip = new Fl_Input(80, 340, 160, 30, "first");
+        { first_ip = new Fl_Input(50, 136, 160, 30, "first");
           first_ip->labelsize(18);
           first_ip->textsize(18);
+          first_ip->align(Fl_Align(FL_ALIGN_TOP_LEFT));
         } // Fl_Input* first_ip
-        { last_ip = new Fl_Input(300, 340, 160, 30, "last");
+        { last_ip = new Fl_Input(50, 195, 160, 30, "last");
           last_ip->labelsize(18);
           last_ip->textsize(18);
+          last_ip->align(Fl_Align(FL_ALIGN_TOP_LEFT));
         } // Fl_Input* last_ip
-        { out_net = new Fl_Output(80, 280, 160, 30, "net");
+        { out_net = new Fl_Output(263, 240, 160, 30, "net");
           out_net->labelsize(18);
           out_net->textsize(18);
+          out_net->align(Fl_Align(FL_ALIGN_TOP_LEFT));
         } // Fl_Output* out_net
+        { btn_active_mode = new Fl_Light_Button(50, 241, 165, 30, "active mode");
+          btn_active_mode->labelsize(18);
+          btn_active_mode->align(Fl_Align(FL_ALIGN_CENTER|FL_ALIGN_INSIDE));
+          btn_active_mode->callback(clbk_btn_active_mode, this);
+        } // Fl_Light_Button* btn_active_mode
+        { log_display = new Fl_Text_Display(500, 70, 500, 650, "Logs");
+          log_display->labelsize(18);
+          log_display->textsize(18);
+        } // Fl_Text_Display* log_display
         grp_settings->end();
       } // Fl_Group* grp_settings
       tbs_main->end();
@@ -140,13 +175,28 @@ void NetGuardUserInterface::updateNodesBrowser()
 
 void NetGuardUserInterface::updatePortsBrowser(const std::string& destination)
 {
-    brws_scanned_ports->clear();
+    brws_closed_ports->clear();
+    brws_opened_ports->clear();
+    brws_filtered_ports->clear();
     const ports_storage& temp = 
         schedule->manager.GetMap()[destination].ports;
     for(ports_storage::const_iterator it = temp.begin(); 
             it != temp.end(); it++){
-        char buffer[64] = {};
-        sprintf(buffer, "tcp/%d %s", it->first, ports_conditions[it->second]);
-        brws_scanned_ports->add(buffer);
+        char buffer[11] = {};
+        sprintf(buffer, "tcp/%d", it->first);
+        switch (it->second) {
+            case Open:
+                brws_opened_ports->add(buffer);
+                break;
+            case Closed:
+                brws_closed_ports->add(buffer);
+                break;
+            case Filtered:
+                brws_filtered_ports->add(buffer);
+                break;
+            case Unset:
+                break;
+        
+        }
     }
 }
