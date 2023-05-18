@@ -29,6 +29,7 @@ public:
   Fl_Output *out_vendor;
   Fl_Button *btn_ports_scan;
   Fl_Check_Browser *brws_ports;
+  Fl_Browser *brws_scanned_ports;
   Fl_Progress *ports_scan_progress;
   Fl_Output *out_type;
   Fl_Group *grp_settings;

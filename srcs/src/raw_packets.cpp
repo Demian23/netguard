@@ -3,8 +3,6 @@
 
 namespace raw_packets{
 
-enum{default_send_port = 48888, default_buffer_size = 1024};
-
 struct pseudo_header    //needed for checksum calculation in syn
 {
     uint32_t source_address;
@@ -16,17 +14,17 @@ struct pseudo_header    //needed for checksum calculation in syn
     tcphdr tcp;
 };
 
-bool bind_socket_to_interface(int sd, const char* interface)
+bool make_manual_socket(int& sd, int type)
 {
-    ifreq ifr;
-    memset(&ifr, 0, sizeof(ifr));
-    strncpy(ifr.ifr_name, interface, IFNAMSIZ);
-    bool result = true;
-    if(setsockopt(sd, SOL_SOCKET, IP_BOUND_IF, &ifr, sizeof(ifr) == -1)){
-        errors::SysRet("Fail bind to interface");
-        result = false;
+    bool res = false;
+    if(make_raw_socket(sd, type)){
+        int opt = 1;
+        ssize_t ret = setsockopt(sd, IPPROTO_IP, IP_HDRINCL, &opt, 
+            sizeof(int));
+        if(ret != -1)
+            res = true;
     }
-    return result;
+    return res;
 }
 
 bool make_raw_socket(int& sd, int type)
@@ -61,8 +59,7 @@ uint16_t calc_checksum(uint16_t *addr, int len)
 }
 
 //return result packet size, assumed that packet buffer is big enough
-int prepare_tcp_packet(char* packet, in_addr src, in_addr dest, 
-    uint16_t src_port, uint16_t dest_port, uint8_t flags)
+int prepare_tcp_packet(char* packet, sockaddr_in* src, sockaddr_in* dest, uint8_t flags)
 {
     ip *ip_hdr = reinterpret_cast<ip*>(packet);
     tcphdr* tcp_hdr = reinterpret_cast<tcphdr*>(packet + sizeof(ip));
@@ -77,13 +74,13 @@ int prepare_tcp_packet(char* packet, in_addr src, in_addr dest,
     ip_hdr->ip_ttl = 64;
     ip_hdr->ip_p = IPPROTO_TCP;
     ip_hdr->ip_sum = 0;
-    ip_hdr->ip_src = src;
-    ip_hdr->ip_dst = dest;
+    ip_hdr->ip_src = src->sin_addr;
+    ip_hdr->ip_dst = dest->sin_addr;
     ip_hdr->ip_sum = calc_checksum(reinterpret_cast<uint16_t*>(packet), 
         ip_hdr->ip_len >> 1);
 
-    tcp_hdr->th_sport = htons(src_port); 
-    tcp_hdr->th_dport = htons(dest_port);
+    tcp_hdr->th_sport = src->sin_port; 
+    tcp_hdr->th_dport = dest->sin_port;
     tcp_hdr->th_seq = 0;
     tcp_hdr->th_ack = 0;
     tcp_hdr->th_off = 5;
@@ -92,8 +89,8 @@ int prepare_tcp_packet(char* packet, in_addr src, in_addr dest,
     tcp_hdr->th_sum = 0;
     tcp_hdr->th_urp = 0;
 
-    psh.source_address = src.s_addr;
-    psh.dest_address = dest.s_addr;
+    psh.source_address = src->sin_addr.s_addr;
+    psh.dest_address = dest->sin_addr.s_addr;
     psh.placeholder = 0;
     psh.protocol = IPPROTO_TCP;
     psh.tcp_length = htons(20);
@@ -104,19 +101,15 @@ int prepare_tcp_packet(char* packet, in_addr src, in_addr dest,
     return ip_hdr->ip_len;
 }
 
-bool send_tcp_flag(int sockfd, const sockaddr_in& src, sockaddr_in* dest,
-    uint16_t src_port, uint16_t dest_port, uint8_t flags)
+// with manual socket only
+bool send_tcp_flag(int sockfd, sockaddr_in* src, sockaddr_in* dest,
+    uint8_t flags, char* packet_buffer)
 {
-    char packet[default_buffer_size] = {}; 
     bool res = true;
-    int packet_len = prepare_tcp_packet(packet, src.sin_addr, 
-        dest->sin_addr, src_port, dest_port, TH_SYN);
-    int opt = 1;
-    ssize_t ret = setsockopt(sockfd, IPPROTO_IP, IP_HDRINCL, &opt, 
-        sizeof(int));
-    if(ret != -1)
-        ret = sendto(sockfd, packet, packet_len, 0, 
-            reinterpret_cast<sockaddr*>(&dest), sizeof(sockaddr_in));
+    int packet_len = prepare_tcp_packet(packet_buffer, src, 
+        dest, flags);
+    ssize_t ret = sendto(sockfd, packet_buffer, packet_len, 0, 
+        reinterpret_cast<sockaddr*>(&dest), sizeof(sockaddr_in));
     if(ret == -1){
         errors::SysRet("Fail to send SYN packet");
         res = false; 
@@ -124,30 +117,7 @@ bool send_tcp_flag(int sockfd, const sockaddr_in& src, sockaddr_in* dest,
     return res;
 }
 
-// nonblock socket 
-
-bool get_syn_answer(char* packet, int len, sockaddr_in* from)
-{
-    ip* ip_hdr = reinterpret_cast<ip*>(packet);
-    uint8_t offset = ip_hdr->ip_hl * 4;
-    tcphdr* tcp_hdr = reinterpret_cast<tcphdr*>(packet + offset);
-    bool res = false;
-    if(ip_hdr->ip_p == IPPROTO_TCP){
-        if(tcp_hdr->th_flags | TH_ACK && tcp_hdr->th_flags | TH_SYN){
-           res = true; 
-           from->sin_addr = ip_hdr->ip_src;
-           from->sin_port = tcp_hdr->th_sport;           
-        } else if(tcp_hdr->th_flags | TH_RST){
-           from->sin_addr = ip_hdr->ip_src;
-           from->sin_port = tcp_hdr->th_sport;
-        }
-    }
-    return res;
-}
-
-// is it necessary?
-std::atomic_uint16_t id(getpid() & 0xFFFF);
-
+int id(getpid() & 0xFFFF);
 int get_id(){return ++id;}
 
 //check ret value
@@ -253,3 +223,37 @@ bool get_exceed_node(int fd, char* ptr, ssize_t len, int id, in_addr& res_addr)
 }
 
 }
+
+/*
+bool bind_socket_to_interface(int sd, const char* interface)
+{
+    ifreq ifr;
+    memset(&ifr, 0, sizeof(ifr));
+    strncpy(ifr.ifr_name, interface, IFNAMSIZ);
+    bool result = true;
+    if(setsockopt(sd, SOL_SOCKET, IP_BOUND_IF, &ifr, sizeof(ifr) == -1)){
+        errors::SysRet("Fail bind to interface");
+        result = false;
+    }
+    return result;
+}
+
+bool get_syn_answer(char* packet, int len, sockaddr_in* from)
+{
+    ip* ip_hdr = reinterpret_cast<ip*>(packet);
+    uint8_t offset = ip_hdr->ip_hl * 4;
+    tcphdr* tcp_hdr = reinterpret_cast<tcphdr*>(packet + offset);
+    bool res = false;
+    if(ip_hdr->ip_p == IPPROTO_TCP){
+        if(tcp_hdr->th_flags | TH_ACK && tcp_hdr->th_flags | TH_SYN){
+           res = true; 
+           from->sin_addr = ip_hdr->ip_src;
+           from->sin_port = tcp_hdr->th_sport;           
+        } else if(tcp_hdr->th_flags | TH_RST){
+           from->sin_addr = ip_hdr->ip_src;
+           from->sin_port = tcp_hdr->th_sport;
+        }
+    }
+    return res;
+}
+*/

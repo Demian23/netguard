@@ -2,12 +2,54 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <netdb.h>
+#include <sstream>
 #include "../include/errors.h"
 
 #include "../include/ip.h"
 
 namespace IP{
 
+bool is_valid_ip_string(const std::string& ip_string)
+{
+    std::stringstream stream(ip_string);
+    std::string temp;
+    bool res = true;
+    for(int i = 0; res && i < 3; i++){
+        res = false;
+        if(stream.eof() || stream.bad())
+            break;
+        std::getline(stream, temp, '.');
+        if(!stream.bad()){
+            int n = atoi(temp.c_str());
+            if(n < 256 && n >  0){
+                res = true;
+            }
+        }
+    }
+    res = false;
+    temp.clear();
+    std::getline(stream, temp);
+    if(!temp.empty()){
+        int n = atoi(temp.c_str());
+        if(n < 256 && n >  0){
+            res = true;
+        }
+    } 
+    return res;
+}
+
+bool check_ip_range(const std::string& net, const std::string& mask, const std::string& first,
+    const std::string& last)
+{
+   uint32_t first_ip_n = ipv4_to_number(first_ip(net));
+   uint32_t last_ip_n = ipv4_to_number(last_ip(net, mask));
+   uint32_t first_n = ipv4_to_number(first);
+   uint32_t last_n = ipv4_to_number(last);
+   if(first_n >= first_ip_n && first_n <= last_ip_n && last_n >= first_ip_n 
+       && last_n <= last_ip_n && first_n <= last_n)
+       return true;
+   else return false;
+}
 
 std::set<std::string> all_ipv4_from_range(const std::string &first, const std::string &last)
 {

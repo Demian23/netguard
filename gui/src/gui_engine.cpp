@@ -97,24 +97,31 @@ void clbk_full_scan(Fl_Widget *w, void *data)
 {
     NetGuardUserInterface* n = reinterpret_cast<NetGuardUserInterface*>(data); 
     n->schedule->manager.SetInterface(n->choice_interface->text());
-    std::set<std::string> ip_set = 
-        IP::all_ipv4_from_range(n->first_ip->value(),n->last_ip->value());
-    NetNode own_device;
-    own_device.ipv4_address = n->out_own_ip->value();
-    own_device.type = "Own host";
-    own_device.name = host_addr::get_own_name();
-    own_device.mac_address = n->out_own_mac->value();
-    own_device.is_active = true;
-    ether_addr* temp = ether_aton(own_device.mac_address.c_str());
-    own_device.vendor = MAC::get_vendor(*temp);
-    ip_set.erase(own_device.ipv4_address);
-    n->schedule->manager.SetIps(ip_set);
-    n->schedule->manager.AddNode(own_device);
-    n->schedule->AddOrdinaryTask(new Pinger(*n->schedule, new PingerStatistic(n->progress)));
-    n->schedule->AddOrdinaryTask(new Arper(*n->schedule));
-    n->schedule->AddOrdinaryTask(new FindGate(*n->schedule));
-    n->schedule->AddOrdinaryTask(new UpdateNodes(n));
-    n->schedule->WakeUp();
+    std::string first_ip_string = n->first_ip->value();
+    std::string last_ip_string = n->last_ip->value();
+    if(IP::is_valid_ip_string(first_ip_string) && IP::is_valid_ip_string(last_ip_string) 
+    && IP::check_ip_range(n->out_net->value(), n->out_own_mask->value(), first_ip_string, last_ip_string)){
+        std::set<std::string> ip_set = 
+            IP::all_ipv4_from_range(first_ip_string, last_ip_string);
+        NetNode own_device;
+        own_device.ipv4_address = n->out_own_ip->value();
+        own_device.type = "Own host";
+        own_device.name = host_addr::get_own_name();
+        own_device.mac_address = n->out_own_mac->value();
+        own_device.is_active = true;
+        ether_addr* temp = ether_aton(own_device.mac_address.c_str());
+        own_device.vendor = MAC::get_vendor(*temp);
+        ip_set.erase(own_device.ipv4_address);
+        n->schedule->manager.SetIps(ip_set);
+        n->schedule->manager.AddNode(own_device);
+        n->schedule->AddOrdinaryTask(new Pinger(*n->schedule, new PingerStatistic(n->progress)));
+        n->schedule->AddOrdinaryTask(new Arper(*n->schedule));
+        n->schedule->AddOrdinaryTask(new FindGate(*n->schedule));
+        n->schedule->AddOrdinaryTask(new UpdateNodes(n));
+        n->schedule->WakeUp();
+    }else{
+        fl_alert("Wrong ip range!");
+    }
 }
 
 void clbk_main_window(Fl_Widget* w, void* data)
@@ -146,7 +153,18 @@ void clbk_nodes_brws(Fl_Widget *w, void *data)
         n->out_vendor->value(node->vendor.c_str());
         n->out_name->value(node->name.c_str());
         n->out_type->value(node->type.c_str());
+        n->brws_scanned_ports->clear();
     }
+}
+
+ports_storage get_ports(Fl_Check_Browser* brws)
+{
+    ports_storage new_ports;
+    for(int i = 0; i <= 65535; i++){
+        if(brws->checked(i))
+            new_ports.emplace(i, Unset);
+    }
+    return new_ports;
 }
 
 void clbk_port_scan(Fl_Widget* w, void *data)
@@ -154,10 +172,23 @@ void clbk_port_scan(Fl_Widget* w, void *data)
     NetGuardUserInterface* n = reinterpret_cast<NetGuardUserInterface*>(data); 
     std::string dest_ip = n->out_ip->value();
     std::string src_ip = n->out_own_ip->value();
-    n->schedule->AddUrgentTask(new PortScanner(*n->schedule, 
-        n->schedule->manager.GetMap()[dest_ip].ports, dest_ip, 
-        new PortScannerStatistic(n->ports_scan_progress)));
-    n->schedule->AddUrgentTask(new UpdatePorts(n, dest_ip));
-    n->schedule->WakeUp();
+    if(!dest_ip.empty()){
+        n->schedule->manager.GetMap()[dest_ip].ports = get_ports(n->brws_ports);
+        n->schedule->AddUrgentTask(new PortScanner(*n->schedule, 
+          n->schedule->manager.GetMap()[dest_ip].ports, dest_ip, 
+            new PortScannerStatistic(n->ports_scan_progress)));
+        n->schedule->AddUrgentTask(new UpdatePorts(n, dest_ip));
+        n->schedule->WakeUp();
+    } else {
+        fl_alert("Choose node first");
+    }
 }
 
+void init_brws_ports(Fl_Check_Browser *brws)
+{
+    for(int i = 1; i <= 65535; i++){
+        char temp[6] = {};    
+        IP::itoa(i, temp);
+        brws->add(temp);
+    }
+}

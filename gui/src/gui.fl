@@ -8,60 +8,64 @@ class NetGuardUserInterface {open
   } {
     Fl_Window main_window {
       label NetGuard open
-      xywh {58 200 1030 700} type Double color 47 labelcolor 1 size_range {1030 700 1030 700} visible
+      xywh {396 227 1045 791} type Double color 47 labelcolor 1 size_range {1030 700 1030 700} visible
     } {
       Fl_Tabs tbs_main {open
-        xywh {20 25 995 645} labelsize 18
+        xywh {15 15 1005 750} labelsize 18
       } {
         Fl_Group grp_nodes {
-          label Nodes open
-          xywh {20 55 995 615} labelsize 18 hide
+          label Nodes open selected
+          xywh {15 40 1000 725} labelsize 18
         } {
           Fl_Browser brws_nodes {
             label {Nodes list}
-            xywh {45 80 210 550} type Hold labelsize 18 textsize 18
+            xywh {40 70 210 655} type Hold labelsize 18 textsize 18
           }
           Fl_Group grp_node_info {
             label {Node info} open
-            xywh {295 80 690 550} box UP_BOX color 42 labelsize 18 align 2
+            xywh {290 70 695 655} box UP_BOX color 42 labelsize 18 align 2
           } {
             Fl_Output out_name {
               label name
-              xywh {330 110 170 40} labelsize 18 align 5 textsize 18
+              xywh {325 100 170 40} labelsize 18 align 5 textsize 18
             }
             Fl_Output out_ip {
               label ip
-              xywh {330 170 170 40} labelsize 18 align 5 textsize 18
+              xywh {325 160 170 40} labelsize 18 align 5 textsize 18
             }
             Fl_Output out_mac {
               label mac
-              xywh {330 230 170 40} labelsize 18 align 5 textsize 18
+              xywh {325 220 170 40} labelsize 18 align 5 textsize 18
             }
             Fl_Output out_vendor {
               label vendor
-              xywh {330 290 170 40} labelsize 18 align 5 textsize 18
+              xywh {325 280 170 40} labelsize 18 align 5 textsize 18
             }
             Fl_Button btn_ports_scan {
               label {scan ports}
-              xywh {782 575 100 35} labelsize 18
+              xywh {790 665 100 35} labelsize 18
             }
             Fl_Check_Browser brws_ports {
-              label ports
-              xywh {705 111 245 390} type Hold labelsize 18 textsize 18
+              label {choose ports to scan}
+              xywh {325 400 170 240} type Hold labelsize 18 textsize 18
             }
             Fl_Progress ports_scan_progress {
               label scanning
-              xywh {705 535 245 30} labelsize 18
+              xywh {716 611 245 30} labelsize 18
             }
             Fl_Output out_type {
               label type
-              xywh {330 350 170 40} labelsize 18 align 5 textsize 18
+              xywh {325 340 170 40} labelsize 18 align 5 textsize 18
+            }
+            Fl_Browser brws_scanned_ports {
+              label ports
+              xywh {725 105 230 475} labelsize 18 textsize 18
             }
           }
         }
         Fl_Group grp_settings {
           label Settings open
-          xywh {20 50 995 620} labelsize 18
+          xywh {20 50 995 710} labelsize 18 hide
         } {
           Fl_Choice choice_interface {
             label interface open
@@ -92,7 +96,7 @@ class NetGuardUserInterface {open
             xywh {80 340 160 30} labelsize 18 textsize 18
           }
           Fl_Input last_ip {
-            label last selected
+            label last
             xywh {300 340 160 30} labelsize 18 textsize 18
           }
           Fl_Output out_net {
