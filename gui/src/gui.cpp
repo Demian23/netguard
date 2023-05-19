@@ -66,11 +66,10 @@ NetGuardUserInterface::NetGuardUserInterface(Scheduler* a_sched) : schedule(a_sc
             out_type->textsize(18);
             out_type->align(Fl_Align(FL_ALIGN_TOP_LEFT));
           } // Fl_Output* out_type
-          { brws_opened_ports = new Fl_Browser(830, 100, 120, 480, "Open");
-            brws_opened_ports->labelsize(18);
-            brws_opened_ports->textsize(18);
-            brws_opened_ports->align(Fl_Align(FL_ALIGN_TOP));
-          } // Fl_Browser* brws_opened_ports
+          { table = new PortsTable(570, 100, 380, 470, "Ports", schedule->manager);
+            table->labelsize(18);
+            table->end();
+          } // Fl_Table* table_ports
           { btn_clean_ports_brws = new Fl_Button(415, 670, 80, 40, "clean all");
             btn_clean_ports_brws->labelsize(18);
             btn_clean_ports_brws->callback(clbk_clean_all, brws_ports);
@@ -79,16 +78,6 @@ NetGuardUserInterface::NetGuardUserInterface(Scheduler* a_sched) : schedule(a_sc
             btn_choos_all_ports->labelsize(18);
             btn_choos_all_ports->callback(clbk_select_all, brws_ports);
           } // Fl_Button* btn_choos_all_ports
-          { brws_filtered_ports = new Fl_Browser(700, 100, 120, 480, "Filtered");
-            brws_filtered_ports->labelsize(18);
-            brws_filtered_ports->textsize(18);
-            brws_filtered_ports->align(Fl_Align(FL_ALIGN_TOP));
-          } // Fl_Browser* brws_filtered_ports
-          { brws_closed_ports = new Fl_Browser(570, 100, 120, 480, "Closed");
-            brws_closed_ports->labelsize(18);
-            brws_closed_ports->textsize(18);
-            brws_closed_ports->align(Fl_Align(FL_ALIGN_TOP));
-          } // Fl_Browser* brws_closed_ports
           grp_node_info->end();
         } // Fl_Group* grp_node_info
         grp_nodes->end();
@@ -175,28 +164,6 @@ void NetGuardUserInterface::updateNodesBrowser()
 
 void NetGuardUserInterface::updatePortsBrowser(const std::string& destination)
 {
-    brws_closed_ports->clear();
-    brws_opened_ports->clear();
-    brws_filtered_ports->clear();
-    const ports_storage& temp = 
-        schedule->manager.GetMap()[destination].ports;
-    for(ports_storage::const_iterator it = temp.begin(); 
-            it != temp.end(); it++){
-        char buffer[11] = {};
-        sprintf(buffer, "tcp/%d", it->first);
-        switch (it->second) {
-            case Open:
-                brws_opened_ports->add(buffer);
-                break;
-            case Closed:
-                brws_closed_ports->add(buffer);
-                break;
-            case Filtered:
-                brws_filtered_ports->add(buffer);
-                break;
-            case Unset:
-                break;
-        
-        }
-    }
+    std::vector<uint16_t> ports_sorted = schedule->manager.GetSortedPorts(destination);
+    table->UpdateTable(destination, ports_sorted);
 }

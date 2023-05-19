@@ -6,7 +6,6 @@
 #include "../../srcs/include/router.h"
 #include "../../srcs/include/port_scanner.h"
 #include "gui_engine.h"
-
 #include "gui.h"
 
 class GuiUpdater final : public IEvent{
@@ -89,6 +88,88 @@ private:
     NetGuardUserInterface* interface;
     std::string dest;
 };
+
+PortsTable::PortsTable(int x, int y, int table_w, int table_h, const char* label,
+    NodesManager& m)
+    : Fl_Table_Row(x, y, table_w, table_h, label), manager(m)
+{
+    rows(0xFFFF);
+    row_resize(0);
+
+   cols(4);
+   col_width(1, col_width(1) + 40);
+   col_header(1);
+   col_resize(0);
+   type(SELECT_NONE);
+   end();
+}
+
+void PortsTable::DrawHeader(const char *str, int X, int Y, int W, int H)
+{
+    fl_push_clip(X, Y, W, H);
+    fl_draw_box(FL_THIN_UP_BOX, X, Y, W, H, row_header_color());
+    fl_color(FL_BLACK);
+    fl_draw(str, X,Y,W,H, FL_ALIGN_CENTER);
+    fl_pop_clip();
+}
+
+void PortsTable::DrawCell(const char *str, int X, int Y, int W, int H, bool select)
+{
+    fl_push_clip(X, Y, W, H);
+    int bgcolor = select ? selection_color() : FL_WHITE;
+    int textcolor = select ? FL_YELLOW : FL_BLACK;
+    fl_draw_box(FL_THIN_UP_BOX, X, Y, W, H, bgcolor);
+    fl_color(textcolor);
+    fl_draw(str, X, Y, W, H, FL_ALIGN_LEFT);
+    fl_pop_clip();
+}
+
+void PortsTable::DrawCellContent(int R, int C, int X, int Y, int W, int H)
+{
+    char buff[64] = {};
+    if(R >= printable_ports.size())
+        DrawCell("", X, Y, W, H, row_selected(R));
+    else{
+        switch(C){
+            case 0:
+                IP::itoa(printable_ports[R], buff);
+                DrawCell(buff, X, Y, W, H, row_selected(R));
+                break;
+            case 1:
+                DrawCell(manager.GetService(printable_ports[R]).c_str(), X, Y, W, H, row_selected(R));
+                break;
+            case 2:
+                DrawCell(manager.GetProtocol(printable_ports[R]).c_str(), X, Y, W, H, row_selected(R));
+                break;
+            case 3:
+                DrawCell(manager.GetPortCond(current_ip, printable_ports[R]), X, Y, W, H, row_selected(R));
+                break;
+            default: break;
+        }
+    }
+}
+
+
+void PortsTable::draw_cell(TableContext context, int R, int C, int X, int Y, int W, int H)
+{
+    const char *header_text[4] = {"Port", "Service", "Protocol", "Condition"};
+    switch (context) {
+        case CONTEXT_STARTPAGE:             // Fl_Table telling us it's starting to draw page
+            fl_font(FL_HELVETICA, 18);
+            return;
+        case CONTEXT_COL_HEADER:
+            DrawHeader(header_text[C], X, Y, W, H);
+            return;
+        case CONTEXT_ROW_HEADER:      
+        case CONTEXT_CELL:                  // Fl_Table telling us to draw cells
+            DrawCellContent(R, C, X, Y, W, H);
+            return;
+    default:
+        return;
+    }
+}
+
+
 
 void init_interface_choices(Fl_Choice *choice)
 {

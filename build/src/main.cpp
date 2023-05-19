@@ -60,6 +60,7 @@ int main()
 {
     EventSelector selector;
     NodesManager manager; 
+    manager.InitServices();
     Scheduler* schedule = new Scheduler(selector, manager);
     pthread_t scan_thread;
     pthread_create(&scan_thread, 0, scan_thr_f, &selector); 

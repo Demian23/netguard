@@ -3,6 +3,7 @@
 #include <string>
 #include <unordered_map> 
 #include <set>
+#include <vector>
 
 enum PortCondition{Unset, Open, Closed, Filtered};
 extern const char* ports_conditions[];
@@ -22,6 +23,7 @@ struct NetNode{
 
 class NodesManager{
 public:
+    NodesManager(){}
     NetMap& GetMap();
     const std::set<std::string>& GetIpSet()const;
     void AddNode(const NetNode& node);
@@ -30,11 +32,17 @@ public:
     void SetIps(const std::set<std::string>& ips);
     const std::string& GetInterface() const;
     const NetNode& GetOwnNode()const;
+    void InitServices();
     bool IsChanged()const{return changed;}
     void Updated(){changed = false;}
     void Change(){changed = true;}
+    std::vector<uint16_t> GetSortedPorts(const std::string& ip);
+    const char*const GetPortCond(const std::string& ip, uint16_t port);
+    std::string GetService(uint16_t port);
+    std::string GetProtocol(uint16_t port);
 private:
     std::unordered_map<std::string, NetNode> nodes_map;
+    std::unordered_map<uint16_t, std::pair<std::string, std::string>> services;
     std::set<std::string> ip_set;
     std::string interface;
     bool changed;

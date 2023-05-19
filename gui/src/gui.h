@@ -17,6 +17,7 @@
 #include <FL/Fl_Text_Display.H>
 
 #include "../../srcs/include/scheduler.h"
+#include "gui_engine.h"
 
 class NetGuardUserInterface {
 public:
@@ -34,11 +35,8 @@ public:
   Fl_Check_Browser *brws_ports;
   Fl_Progress *ports_scan_progress;
   Fl_Output *out_type;
-  Fl_Browser *brws_opened_ports;
   Fl_Button *btn_clean_ports_brws;
   Fl_Button *btn_choos_all_ports;
-  Fl_Browser *brws_filtered_ports;
-  Fl_Browser *brws_closed_ports;
   Fl_Group *grp_settings;
   Fl_Choice *choice_interface;
   Fl_Output *out_own_ip;
@@ -51,6 +49,7 @@ public:
   Fl_Output *out_net;
   Fl_Light_Button *btn_active_mode;
   Fl_Text_Display *log_display;
+  PortsTable* table;
   Scheduler* schedule;
   void show();
   void updateNodesBrowser();

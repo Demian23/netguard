@@ -1,5 +1,6 @@
 #include "../include/nodes_manager.h"
 #include "../include/errors.h"
+#include <netdb.h>
 
 const char* ports_conditions[] = {"Unset", "Open", "Closed", "Filtered"};
 
@@ -62,4 +63,54 @@ void NodesManager::AddPorts(const std::string &ip, const ports_storage &new_port
            specific_ports[it->first] = it->second;
        else specific_ports.emplace(it->first, it->second);
     }
+}
+
+std::string NodesManager::GetService(uint16_t port)
+{
+    std::string res;
+    if(services.find(port) != services.end())
+        res = services[port].first;
+    return res; 
+}
+std::string NodesManager::GetProtocol(uint16_t port)
+{
+    std::string res;
+    if(services.find(port) != services.end())
+        res = services[port].second;
+    return res; 
+}
+
+void NodesManager::InitServices()
+{
+    struct servent* temp;
+    setservent(1);
+    do{
+        temp = getservent();
+        if(temp != 0){
+            uint16_t port = ntohs(temp->s_port);
+            services.insert(std::make_pair(port, std::make_pair(temp->s_name, temp->s_proto)));
+        }
+    }while(temp != 0);
+    endservent();
+}
+
+std::vector<uint16_t> NodesManager::GetSortedPorts(const std::string& ip)
+{
+    std::vector<uint16_t> opened;
+    std::vector<uint16_t> others;
+    for(ports_storage::const_iterator it = nodes_map[ip].ports.begin(); 
+        it != nodes_map[ip].ports.end(); it++){
+        if(it->second == Open)
+            opened.push_back(it->first);
+        else others.push_back(it->first);
+    }
+    std::sort(opened.begin(), opened.end());
+    std::sort(others.begin(), others.end());
+    opened.insert(opened.end(), others.begin(), others.end());
+    return opened;
+}
+
+const char*const NodesManager::GetPortCond(const std::string &ip, uint16_t port)
+{
+    return ports_conditions[nodes_map[ip].ports[port]];
 }
