@@ -28,22 +28,19 @@ public:
     virtual ~Statistic(){}
 };
 
-class Scheduler : public IEvent{
+class Scheduler final: public IEvent{
 public:
     Scheduler(EventSelector& sel, NodesManager& m);
-    void AddOrdinaryTask(Task* t);
-    void TakeOffOrdinaryTask();
-    void AddUrgentTask(UrgentTask* t);
-    void TakeOffUrgentTask();
     void OnTimeout() override;
-    void OnRead() override;
-    void OnWrite() override;
     void OnError() override;
     void OnAnyEvent() override;
     bool End() const override;
     short ListeningEvents() const override; 
-    void ResetEvents(int events) override;
     int GetDescriptor()const override;
+    void AddOrdinaryTask(Task* t);
+    void TakeOffOrdinaryTask();
+    void AddUrgentTask(UrgentTask* t);
+    void TakeOffUrgentTask();
     virtual ~Scheduler();
     void AddToSelector(IEvent* e);
     void WakeUp();

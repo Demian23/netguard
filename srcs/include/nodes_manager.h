@@ -37,9 +37,13 @@ public:
     void Updated(){changed = false;}
     void Change(){changed = true;}
     std::vector<uint16_t> GetSortedPorts(const std::string& ip);
+    std::vector<std::string> GetSortedIps();
+    NetNode* GetNodeByIp(const std::string& ip);
     const char*const GetPortCond(const std::string& ip, uint16_t port);
     std::string GetService(uint16_t port);
     std::string GetProtocol(uint16_t port);
+    void SetAllNodesInactive();
+    void AlarmInactiveNodes();
 private:
     std::unordered_map<std::string, NetNode> nodes_map;
     std::unordered_map<uint16_t, std::pair<std::string, std::string>> services;

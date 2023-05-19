@@ -1,6 +1,7 @@
 #include "../include/nodes_manager.h"
 #include "../include/errors.h"
 #include <netdb.h>
+#include "../include/ip.h"
 
 const char* ports_conditions[] = {"Unset", "Open", "Closed", "Filtered"};
 
@@ -9,8 +10,10 @@ NetNode::NetNode() : type("Host"){}
 void NodesManager::AddNode(const NetNode &node)
 {
     auto it = nodes_map.find(node.ipv4_address);
-    if(it == nodes_map.end())
+    if(it == nodes_map.end()){
         nodes_map.emplace(node.ipv4_address, node);
+        errors::Msg("ALARM: new device %s", node.ipv4_address.c_str());
+    }
     else {
         it->second.is_active = node.is_active; 
         //if(!node.mac_address.empty()) it->second.mac_address = node.mac_address;
@@ -110,7 +113,46 @@ std::vector<uint16_t> NodesManager::GetSortedPorts(const std::string& ip)
     return opened;
 }
 
+std::vector<std::string> NodesManager::GetSortedIps()
+{
+    std::vector<std::string> res;
+    for(const auto& node : nodes_map){
+        res.push_back(node.first);
+    }
+    auto ip_compare = [](std::string fip, std::string sip){
+        uint32_t first = IP::ipv4_to_number(fip);
+        uint32_t second = IP::ipv4_to_number(sip);
+        return first > second;
+    };
+    std::sort(res.begin(), res.end(), ip_compare);
+    return res;
+}
+
 const char*const NodesManager::GetPortCond(const std::string &ip, uint16_t port)
 {
     return ports_conditions[nodes_map[ip].ports[port]];
+}
+
+void NodesManager::SetAllNodesInactive()
+{
+    for (auto& node : nodes_map) {
+        if(node.second.type != "Own host")
+            node.second.is_active = false; 
+    }
+}
+
+void NodesManager::AlarmInactiveNodes()
+{
+    for(auto& node : nodes_map) 
+        if(!node.second.is_active)
+            errors::Msg("ALARM: %s(%s) is unavailable", node.second.ipv4_address.c_str(), node.second.name.c_str());
+}
+
+NetNode* NodesManager::GetNodeByIp(const std::string &ip)
+{
+    NetNode* res = 0;
+    if(nodes_map.find(ip) != nodes_map.end())
+        res = &nodes_map[ip];
+    return res;
+
 }

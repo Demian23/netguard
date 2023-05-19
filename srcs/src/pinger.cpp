@@ -14,12 +14,8 @@ private:
 public:
     RecvEcho();
     void OnRead()override; 
-    void OnWrite()override; 
     void OnError()override; 
-    void OnTimeout()override; 
-    void OnAnyEvent()override;
     short ListeningEvents() const override; 
-    void ResetEvents(int events)override;
     int GetDescriptor()const override;
     bool End() const override{return end;}
     void SetEnd(){end = true;}
@@ -51,12 +47,8 @@ void RecvEcho::OnRead()
 }
 
 int RecvEcho::GetDescriptor() const{return fd;}
-void RecvEcho::OnError(){errors::SysRet("recv echo");end = true;}
-void RecvEcho::OnWrite(){}
-void RecvEcho::OnTimeout(){}
-void RecvEcho::OnAnyEvent(){}
+void RecvEcho::OnError(){errors::SysRet("ERROR: error while receiving echo reply");end = true;}
 short RecvEcho::ListeningEvents() const {return Read + Error;}
-void RecvEcho::ResetEvents(int events){}
 
 Pinger::Pinger(Scheduler& m, Statistic* stat, Mode mode)
     : master(m), statistic(stat), ips_set(master.manager.GetIpSet()), reciver(0), send_in_time(0)
@@ -115,10 +107,7 @@ void Pinger::UpdateDevices()
 {
     const std::set<std::string>& ip_set = static_cast<RecvEcho*>(reciver)->GetIps();
     std::set<std::string>::const_iterator ip_set_it = ip_set.begin();
-    for (auto& node : master.manager.GetMap()) {
-        if(node.second.type != "Own host")
-            node.second.is_active = false; 
-    }
+    master.manager.SetAllNodesInactive();
     for(;ip_set_it != ip_set.end(); ip_set_it++){
         NetNode new_node; 
         new_node.is_active = true;
@@ -128,6 +117,7 @@ void Pinger::UpdateDevices()
         new_node.name = IP::get_name(&temp);
         master.manager.AddNode(new_node);
     }
+    master.manager.AlarmInactiveNodes();
     reinterpret_cast<RecvEcho*>(reciver)->SetEnd();
 }
 

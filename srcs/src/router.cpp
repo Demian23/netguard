@@ -12,10 +12,8 @@ bool FindGate::Execute()
     ssize_t len = raw_packets::recieve_packet(fd, buffer, 1024, &from);
     flag = raw_packets::get_exceed_node(fd, buffer, len, id, res);
     close(fd);
-    if(flag){
-        NetMap& temp = master.manager.GetMap();
-        temp[inet_ntoa(res)].type = "Gateway";
-    }
+    if(flag)
+        master.manager.GetNodeByIp(inet_ntoa(res))->type = "Gateway";
     return flag;
 }
 

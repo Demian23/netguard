@@ -35,18 +35,20 @@ void EventSelector::StartSelecting()
             else break;
         }
         for(int i = 0; i < polling.current_size; i++){
-            if(polling.fds[i].revents & POLLERR)
-                events[i]->OnError();
-            if(polling.fds[i].revents & POLLNVAL)
-                events[i]->OnError();
-            if(polling.fds[i].revents & POLLIN)
-                events[i]->OnRead();
-            if(polling.fds[i].revents & POLLOUT)
-                events[i]->OnWrite();
-            if(events[i] && events[i]->ListeningEvents() & Events::Timeout && ret == 0)
-                events[i]->OnTimeout();
-            if(events[i] && events[i]->ListeningEvents() & Events::Any)
-                events[i]->OnAnyEvent();
+            if(i < events.size() && events[i]){
+                if(polling.fds[i].revents & POLLERR)
+                    events[i]->OnError();
+                if(polling.fds[i].revents & POLLNVAL)
+                    events[i]->OnError();
+                if(polling.fds[i].revents & POLLIN)
+                    events[i]->OnRead();
+                if(polling.fds[i].revents & POLLOUT)
+                    events[i]->OnWrite();
+                if(events[i]->ListeningEvents() & Events::Timeout && ret == 0)
+                    events[i]->OnTimeout();
+                if(events[i]->ListeningEvents() & Events::Any)
+                    events[i]->OnAnyEvent();
+            }
         }
         std::for_each(events.begin(), events.end(), [this](IEvent* e)
             {if(e && e->End()) DeleteEvent(e);});

@@ -153,14 +153,16 @@ void NetGuardUserInterface::show(){main_window->show();}
 
 void NetGuardUserInterface::updateNodesBrowser()
 {
-    const NetMap& map = schedule->manager.GetMap();
     brws_nodes->clear();
     int i = 0;
-    for(NetMap::const_iterator it = map.begin(); it != map.end(); it++, i++){
-        if(it->second.is_active)
-            brws_nodes->insert(i, (it->first + " (on)").c_str(), (void*)&it->second);
+    std::vector<std::string> sorted_ips = schedule->manager.GetSortedIps();
+    for(auto& ip : sorted_ips){
+        NetNode* node = schedule->manager.GetNodeByIp(ip);
+        if(node && node->is_active)
+            brws_nodes->insert(i, (ip + " (on)").c_str(), (void*)node);
         else
-            brws_nodes->insert(i, (it->first + " (off)").c_str(), (void*)&it->second);
+            brws_nodes->insert(i, (ip + " (off)").c_str(), (void*)node);
+
     }
 }
 

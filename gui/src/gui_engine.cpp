@@ -18,14 +18,10 @@ class GuiUpdater final : public IEvent{
     GuiUpdater(NetGuardUserInterface& n, NodesManager& m) 
         : interface(n), manager(m), end(false){fd = open("netguard.log", O_RDONLY);}
 public:
-    void OnRead()override;
-    void OnWrite()override{}
     void OnError()override{end = true;}
-    void OnTimeout()override{}
     bool End()const override{return end;}
     int GetDescriptor() const override{return fd;}
-    short ListeningEvents()const override{return Any + Read;} 
-    void ResetEvents(int events) override{}
+    short ListeningEvents()const override{return Any;} 
     void OnAnyEvent()override;
     virtual ~GuiUpdater(){close(fd);}
     static GuiUpdater* Make(NetGuardUserInterface& n);
@@ -45,13 +41,10 @@ void GuiUpdater::OnAnyEvent()
         interface.updateNodesBrowser();
         manager.Updated();
     }
-}
-
-void GuiUpdater::OnRead()
-{
     char buffer[1024] = {};
-    read(fd, buffer, 1024);
-    interface.log_buffer->append(buffer);
+    int size = read(fd, buffer, 1024);
+    if(size > 0)
+        interface.log_buffer->append(buffer);
 }
 
 class PingerStatistic : public Statistic{
@@ -75,7 +68,7 @@ class PortScannerStatistic : public Statistic{
 public:
     PortScannerStatistic(Fl_Progress* port_progress) : port_progress_bar(port_progress){}
     void RecordStatistic(Task* task)override;
-    virtual ~PortScannerStatistic(){port_progress_bar->value(port_progress_bar->minimum());}
+    virtual ~PortScannerStatistic(){port_progress_bar->value(port_progress_bar->minimum()); port_progress_bar->label("scanning");}
 private:
     Fl_Progress* port_progress_bar;
 };
@@ -85,6 +78,7 @@ void PortScannerStatistic::RecordStatistic(Task *task)
     PortScanner* p = static_cast<PortScanner*>(task);
     float percent = (float)p->GetCurrentCount() * 100 / p->GetPortsSize();
     port_progress_bar->value(percent);
+    port_progress_bar->copy_label((p->GetAim() + " scanning").c_str());
     Fl::awake();
 }
 

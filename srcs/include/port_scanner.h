@@ -11,6 +11,7 @@ public:
     bool UrgentExecute() override;
     inline int GetPortsSize() const{return ports.size();}
     int GetCurrentCount() const;
+    std::string GetAim()const;
     bool CheckPreviousPorts(); // if true, than can go on
 private:
     Scheduler& master;

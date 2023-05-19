@@ -52,28 +52,21 @@ void Scheduler::OnTimeout()
 void Scheduler::OnAnyEvent()
 {
     bool done = false;
+    if(urgent_schedule.empty() && schedule.empty()){
+        if(active_mode)
+            SetIternalQueue();
+        else
+            selector.SetTimeout(-1);
+    }
     if(!urgent_schedule.empty()){
         done = urgent_schedule.front()->UrgentExecute();
         if(done)
             TakeOffUrgentTask();
-    } else {
-        if(schedule.empty()){
-            if(active_mode){
-                if(iternal_schedule.empty()){
-                    SetIternalQueue();
-                }
-            }
-            else 
-                selector.SetTimeout(-1);     
-        }
     }
 }
 void Scheduler::OnError(){is_end = true;}
-void Scheduler::OnRead(){}
-void Scheduler::OnWrite(){}
 bool Scheduler::End() const {return is_end;}
 short Scheduler::ListeningEvents() const {return Timeout + Any;}
-void Scheduler::ResetEvents(int events){}
 int Scheduler::GetDescriptor()const{return 2;}
 
 Scheduler::~Scheduler()

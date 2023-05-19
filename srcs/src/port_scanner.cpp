@@ -9,24 +9,20 @@ class TcpHandshakeAnalizer : public IEvent{
     bpf_hdr* bpf_buffer;
     int bpf_buffer_size;
     int bpf_fd;
-    int manual_sd;
+   // int manual_sd;
     bool end;
 public:
     TcpHandshakeAnalizer(in_addr a_from, ports_storage& a_ports)
-        :  ports(a_ports), from(a_from),  bpf_fd(0), manual_sd(0), end(false) {}
+        :  ports(a_ports), from(a_from),  bpf_fd(0), end(false) {}
     bool Init(const char* net_interface);
     void ProcessBpfPacket(bpf_hdr* packet);
     void SetEnd(){end = true;}
     bool End()const override{return end;}
-    void OnRead() override{}
-    void OnWrite() override{}
-    void OnError() override{errors::SysRet("TcpHandshakeAnalizer"); end = true;}
-    void OnTimeout() override{}
-    void ResetEvents(int events) override{}
-    short ListeningEvents()const override{return Any + Error;}
-    int GetDescriptor() const override{return manual_sd;}
+    void OnError() override{errors::SysRet("ERROR: on analyzing tcp packet"); end = true;}
+    short ListeningEvents()const override{return Any;} //Error;}
+    int GetDescriptor() const override{return bpf_fd;}
     void OnAnyEvent() override;
-    virtual ~TcpHandshakeAnalizer(){close(manual_sd); close(bpf_fd); delete[] bpf_buffer;}
+    virtual ~TcpHandshakeAnalizer(){close(bpf_fd); delete[] bpf_buffer;}
 };
 
 static int find_bpf_device()
@@ -45,36 +41,35 @@ static int find_bpf_device()
 bool TcpHandshakeAnalizer::Init(const char* net_interface)
 {
     bool res = false;
-   if(raw_packets::make_manual_socket(manual_sd, IPPROTO_TCP)){
-        bpf_fd = find_bpf_device();
-        if(bpf_fd != -1){
-	struct bpf_insn insns[] = {
-		// Load word at octet 12
-		BPF_STMT(BPF_LD | BPF_H | BPF_ABS, 12),
-		BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, ETHERTYPE_IP, 0, 3),
+   //if(raw_packets::make_manual_socket(manual_sd, IPPROTO_TCP)){
+    bpf_fd = find_bpf_device();
+    if(bpf_fd != -1){
+struct bpf_insn insns[] = {
+    // Load word at octet 12
+    BPF_STMT(BPF_LD | BPF_H | BPF_ABS, 12),
+    BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, ETHERTYPE_IP, 0, 3),
 
-		BPF_STMT(BPF_LD | BPF_B | BPF_ABS, 23),
-		BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, IPPROTO_TCP, 0, 1),
-		// Valid TCP reply received, return message
-		BPF_STMT(BPF_RET | BPF_K, sizeof(tcphdr) + sizeof(ip) + sizeof(ether_header)),
-		// Return nothing
-		BPF_STMT(BPF_RET | BPF_K, 0),
-	};
-	struct bpf_program filter = {
-		sizeof insns / sizeof(insns[0]),
-		insns
-	};
-            struct ifreq ir;
-            bpf_buffer_size = 1;
-            strncpy(ir.ifr_name, net_interface, IFNAMSIZ);
-            res = ioctl(bpf_fd, BIOCSETIF, &ir) != -1 && 
-            ioctl(bpf_fd, BIOCIMMEDIATE, &bpf_buffer_size) != -1 &&
-            ioctl(bpf_fd, BIOCGBLEN, &bpf_buffer_size) != -1;
-            timeval timeout = {.tv_sec = 0, .tv_usec = 1000};
-            ioctl(bpf_fd, BIOCSRTIMEOUT, &timeout);
-            res = ioctl(bpf_fd, BIOCSETF, &filter) != -1;
-        }
-   }
+    BPF_STMT(BPF_LD | BPF_B | BPF_ABS, 23),
+    BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, IPPROTO_TCP, 0, 1),
+    // Valid TCP reply received, return message
+    BPF_STMT(BPF_RET | BPF_K, sizeof(tcphdr) + sizeof(ip) + sizeof(ether_header)),
+    // Return nothing
+    BPF_STMT(BPF_RET | BPF_K, 0),
+};
+struct bpf_program filter = {
+    sizeof insns / sizeof(insns[0]),
+    insns
+};
+        struct ifreq ir;
+        bpf_buffer_size = 1;
+        strncpy(ir.ifr_name, net_interface, IFNAMSIZ);
+        res = ioctl(bpf_fd, BIOCSETIF, &ir) != -1 && 
+        ioctl(bpf_fd, BIOCIMMEDIATE, &bpf_buffer_size) != -1 &&
+        ioctl(bpf_fd, BIOCGBLEN, &bpf_buffer_size) != -1;
+        timeval timeout = {.tv_sec = 0, .tv_usec = 1000};
+        ioctl(bpf_fd, BIOCSRTIMEOUT, &timeout);
+        res = ioctl(bpf_fd, BIOCSETF, &filter) != -1;
+    }
    bpf_buffer = (bpf_hdr*)new char[bpf_buffer_size];
    return res;
 }
@@ -201,4 +196,9 @@ bool PortScanner::UrgentExecute()
 int PortScanner::GetCurrentCount()const
 {
     return std::distance<ports_storage::const_iterator>(ports.begin(), ports_it);
+}
+
+std::string PortScanner::GetAim() const
+{
+    return inet_ntoa(dest.sin_addr);
 }
