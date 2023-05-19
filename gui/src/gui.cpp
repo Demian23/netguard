@@ -137,6 +137,8 @@ NetGuardUserInterface::NetGuardUserInterface(Scheduler* a_sched) : schedule(a_sc
         { log_display = new Fl_Text_Display(500, 70, 500, 650, "Logs");
           log_display->labelsize(18);
           log_display->textsize(18);
+          log_buffer = new Fl_Text_Buffer;
+          log_display->buffer(log_buffer);
         } // Fl_Text_Display* log_display
         grp_settings->end();
       } // Fl_Group* grp_settings

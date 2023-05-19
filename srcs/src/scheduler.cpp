@@ -1,11 +1,12 @@
-#include "../include/scheduler.h"
+#include <unistd.h>
 #include <csignal>
 #include "../include/pinger.h"
 #include "../include/arper.h"
 #include "../include/router.h"
+#include "../include/scheduler.h"
 
 Scheduler::Scheduler(EventSelector& sel, NodesManager& m)
-    : manager(m), selector(sel), descriptor(2), is_end(false), active_mode(false)
+    : manager(m), selector(sel), is_end(false), active_mode(false)
 {
     selector.AddEvent(this);
 }
@@ -85,6 +86,7 @@ Scheduler::~Scheduler()
         delete urgent_schedule.front();
         urgent_schedule.pop();
     }
+    close(2);
 }
 
 void Scheduler::AddToSelector(IEvent *e){selector.AddEvent(e);}

@@ -15,6 +15,7 @@
 #include <FL/Fl_Input.H>
 #include <FL/Fl_Light_Button.H>
 #include <FL/Fl_Text_Display.H>
+#include <FL/Fl_Text_Buffer.H>
 
 #include "../../srcs/include/scheduler.h"
 #include "gui_engine.h"
@@ -49,6 +50,7 @@ public:
   Fl_Output *out_net;
   Fl_Light_Button *btn_active_mode;
   Fl_Text_Display *log_display;
+  Fl_Text_Buffer* log_buffer;
   PortsTable* table;
   Scheduler* schedule;
   void show();

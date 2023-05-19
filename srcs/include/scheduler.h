@@ -58,7 +58,6 @@ private:
     std::queue<UrgentTask*> urgent_schedule;
     std::queue<Task*> iternal_schedule;
     pthread_t thread_id;
-    int descriptor;
     bool is_end;
     bool active_mode;
     void SetIternalQueue();

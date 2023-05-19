@@ -58,6 +58,7 @@ void* scan_thr_f(void*d){EventSelector* sel = reinterpret_cast<EventSelector*>(d
 
 int main()
 {
+    errors::SetLogFile("netguard.log");
     EventSelector selector;
     NodesManager manager; 
     manager.InitServices();

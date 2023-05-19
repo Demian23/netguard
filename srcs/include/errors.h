@@ -7,6 +7,8 @@ namespace errors{
     void Dump(const char *fmt, ...);
     void Sys(const char *fmt, ...);
     void SysRet(const char *fmt, ...);
+    void SetLogFile(const char*filename);
+    void EndLogging();
 };
 
 #endif

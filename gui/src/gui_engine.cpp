@@ -5,6 +5,7 @@
 #include "../../srcs/include/arper.h"
 #include "../../srcs/include/router.h"
 #include "../../srcs/include/port_scanner.h"
+#include "../../srcs/include/errors.h"
 #include "gui_engine.h"
 #include "gui.h"
 
@@ -12,19 +13,21 @@ class GuiUpdater final : public IEvent{
     static bool created;
     NetGuardUserInterface& interface;
     NodesManager& manager;
+    int fd;
     bool end;
     GuiUpdater(NetGuardUserInterface& n, NodesManager& m) 
-        : interface(n), manager(m), end(false){}
+        : interface(n), manager(m), end(false){fd = open("netguard.log", O_RDONLY);}
 public:
-    void OnRead()override{} 
+    void OnRead()override;
     void OnWrite()override{}
     void OnError()override{end = true;}
     void OnTimeout()override{}
     bool End()const override{return end;}
-    int GetDescriptor() const override{return 0;}
-    short ListeningEvents()const override{return Any;} 
+    int GetDescriptor() const override{return fd;}
+    short ListeningEvents()const override{return Any + Read;} 
     void ResetEvents(int events) override{}
     void OnAnyEvent()override;
+    virtual ~GuiUpdater(){close(fd);}
     static GuiUpdater* Make(NetGuardUserInterface& n);
 };
 
@@ -42,6 +45,13 @@ void GuiUpdater::OnAnyEvent()
         interface.updateNodesBrowser();
         manager.Updated();
     }
+}
+
+void GuiUpdater::OnRead()
+{
+    char buffer[1024] = {};
+    read(fd, buffer, 1024);
+    interface.log_buffer->append(buffer);
 }
 
 class PingerStatistic : public Statistic{
@@ -178,6 +188,7 @@ void init_interface_choices(Fl_Choice *choice)
     for(host_addr::interface_map::iterator it = interfaces.begin();
             it != interfaces.end(); it++){
         choice->add(it->first.c_str());
+        errors::Msg("Available interface: %s", it->first.c_str());
     }
 }
 
