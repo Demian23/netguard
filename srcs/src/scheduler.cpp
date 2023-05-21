@@ -13,9 +13,11 @@ Scheduler::Scheduler(EventSelector& sel, NodesManager& m)
 
 void Scheduler::WakeUp()
 {
-    selector.SetTimeout(200);
-    signal(SIGUSR1, [](int n){});
-    pthread_kill(thread_id, SIGUSR1);
+    if(selector.GetTimeout() == -1){
+        selector.SetTimeout(200);
+        signal(SIGUSR1, [](int n){});
+        pthread_kill(thread_id, SIGUSR1);
+    }
 }
 
 void Scheduler::AddOrdinaryTask(Task *t){schedule.push(t);}
@@ -52,7 +54,7 @@ void Scheduler::OnTimeout()
 void Scheduler::OnAnyEvent()
 {
     bool done = false;
-    if(urgent_schedule.empty() && schedule.empty()){
+    if(urgent_schedule.empty() && schedule.empty() && iternal_schedule.empty()){
         if(active_mode)
             SetIternalQueue();
         else
@@ -86,7 +88,7 @@ void Scheduler::AddToSelector(IEvent *e){selector.AddEvent(e);}
 //prepare to end
 void Scheduler::EndSchedulingAndSelecting(){WakeUp();selector.EndSelecting();}
 
-void Scheduler::TurnOnActiveMode(){active_mode = true;SetIternalQueue();}
+void Scheduler::TurnOnActiveMode(){WakeUp();active_mode = true;SetIternalQueue();}
 void Scheduler::TurnOffActiveMode()
 {
     active_mode = false; 
@@ -101,4 +103,5 @@ void Scheduler::SetIternalQueue()
     iternal_schedule.push(new Pinger(*this, 0, Pinger::Slow));
     iternal_schedule.push(new Arper(*this));
     iternal_schedule.push(new FindGate(*this));
+    //iternal_schedule.push(new NodesAvailabilityChecker(*this, manager.GetActiveIps()));
 }

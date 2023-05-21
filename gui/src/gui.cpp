@@ -88,7 +88,7 @@ NetGuardUserInterface::NetGuardUserInterface(Scheduler* a_sched) : schedule(a_sc
       } // Fl_Group* grp_nodes
       { grp_settings = new Fl_Group(20, 50, 1000, 710, "Settings");
         grp_settings->labelsize(18);
-        { choice_interface = new Fl_Choice(50, 70, 120, 30, "interface");
+        { choice_interface = new Fl_Choice(55, 155, 160, 40, "interface");
           choice_interface->down_box(FL_BORDER_BOX);
           choice_interface->labelsize(18);
           choice_interface->textsize(18);
@@ -96,44 +96,44 @@ NetGuardUserInterface::NetGuardUserInterface(Scheduler* a_sched) : schedule(a_sc
           choice_interface->callback(clbk_choice_interface, this);
           init_interface_choices(choice_interface);
         } // Fl_Choice* choice_interface
-        { out_own_ip = new Fl_Output(262, 68, 160, 30, "ip");
+        { out_own_ip = new Fl_Output(275, 155, 160, 40, "ip");
           out_own_ip->labelsize(18);
           out_own_ip->textsize(18);
           out_own_ip->align(Fl_Align(FL_ALIGN_TOP_LEFT));
         } // Fl_Output* out_own_ip
-        { out_own_mask = new Fl_Output(262, 130, 160, 30, "mask");
+        { out_own_mask = new Fl_Output(275, 245, 160, 40, "mask");
           out_own_mask->labelsize(18);
           out_own_mask->textsize(18);
           out_own_mask->align(Fl_Align(FL_ALIGN_TOP_LEFT));
         } // Fl_Output* out_own_mask
-        { btn_scan = new Fl_Button(65, 375, 155, 40, "full scan");
+        { btn_scan = new Fl_Button(54, 595, 155, 40, "full scan");
           btn_scan->labelsize(18);
           btn_scan->callback(clbk_full_scan, this);
         } // Fl_Button* btn_scan
-        { progress = new Fl_Progress(45, 310, 380, 40, "scan progress");
+        { progress = new Fl_Progress(55, 515, 380, 40, "scan progress");
           progress->labelsize(18);
         } // Fl_Progress* progress
-        { out_own_mac = new Fl_Output(263, 185, 160, 30, "mac");
+        { out_own_mac = new Fl_Output(275, 335, 160, 40, "mac");
           out_own_mac->labelsize(18);
           out_own_mac->textsize(18);
           out_own_mac->align(Fl_Align(FL_ALIGN_TOP_LEFT));
         } // Fl_Output* out_own_mac
-        { first_ip = new Fl_Input(50, 136, 160, 30, "first");
+        { first_ip = new Fl_Input(55, 245, 160, 40, "first");
           first_ip->labelsize(18);
           first_ip->textsize(18);
           first_ip->align(Fl_Align(FL_ALIGN_TOP_LEFT));
         } // Fl_Input* first_ip
-        { last_ip = new Fl_Input(50, 195, 160, 30, "last");
+        { last_ip = new Fl_Input(55, 335, 160, 40, "last");
           last_ip->labelsize(18);
           last_ip->textsize(18);
           last_ip->align(Fl_Align(FL_ALIGN_TOP_LEFT));
         } // Fl_Input* last_ip
-        { out_net = new Fl_Output(263, 240, 160, 30, "net");
+        { out_net = new Fl_Output(275, 425, 160, 40, "net");
           out_net->labelsize(18);
           out_net->textsize(18);
           out_net->align(Fl_Align(FL_ALIGN_TOP_LEFT));
         } // Fl_Output* out_net
-        { btn_active_mode = new Fl_Light_Button(50, 241, 165, 30, "active mode");
+        { btn_active_mode = new Fl_Light_Button(55, 425, 160, 40, "active mode");
           btn_active_mode->labelsize(18);
           btn_active_mode->align(Fl_Align(FL_ALIGN_CENTER|FL_ALIGN_INSIDE));
           btn_active_mode->callback(clbk_btn_active_mode, this);
@@ -144,7 +144,7 @@ NetGuardUserInterface::NetGuardUserInterface(Scheduler* a_sched) : schedule(a_sc
           log_buffer = new Fl_Text_Buffer;
           log_display->buffer(log_buffer);
         } // Fl_Text_Display* log_display
-        { btn_stop_full_scan = new Fl_Button(245, 375, 155, 40, "stop scan");
+        { btn_stop_full_scan = new Fl_Button(281, 595, 155, 40, "stop scan");
           btn_stop_full_scan->labelsize(18);
           btn_stop_full_scan->callback(clbk_stop_full_scan, this);
         } // Fl_Button* btn_stop_full_scan

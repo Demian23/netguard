@@ -111,8 +111,9 @@ bool send_tcp_flag(int sockfd, sockaddr_in* src, sockaddr_in* dest,
     ssize_t ret = sendto(sockfd, packet_buffer, packet_len, 0, 
         reinterpret_cast<sockaddr*>(&dest), sizeof(sockaddr_in));
     if(ret == -1){
+        if(errno == ENETUNREACH || errno == EHOSTUNREACH || errno == EHOSTDOWN || errno == ENETDOWN)
+            res = false; 
         errors::SysRet("Fail to send SYN packet");
-        res = false; 
     }
     return res;
 }

@@ -55,10 +55,10 @@ const NetNode& NodesManager::GetOwnNode()const
 
 const std::set<std::string>& NodesManager::GetIpSet() const{return ip_set;}
 
-void NodesManager::AddPorts(const std::string &ip, const ports_storage &new_ports)
+void NodesManager::AddPorts(const std::string &ip, const ports_storage &new_ports, ports_storage::iterator& end_it)
 {
     ports_storage& specific_ports = nodes_map[ip].ports;
-    for(ports_storage::const_iterator it = new_ports.begin(); it != new_ports.end(); it++){
+    for(ports_storage::const_iterator it = new_ports.begin(); it != end_it; it++){
        if(specific_ports.find(it->first) != specific_ports.end())
            specific_ports[it->first] = it->second;
        else specific_ports.emplace(it->first, it->second);
@@ -160,4 +160,13 @@ NetNode* NodesManager::GetNodeByIp(const std::string &ip)
         res = &nodes_map[ip];
     return res;
 
+}
+
+std::vector<std::string> NodesManager::GetActiveIps()const
+{
+    std::vector<std::string> res;
+    for(auto& node : nodes_map)
+        if(node.second.is_active)
+            res.push_back(node.first);
+    return res;
 }

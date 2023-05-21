@@ -1,3 +1,4 @@
+#include <string>
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <fcntl.h>
@@ -66,20 +67,32 @@ void writequery(int fd, ether_addr *ownmac,
    } 
 }
 
-bool collectresponse(int fd, arp_pair &p, char *buffer, int buflen)
+bool collectresponse(int fd, ip_mac_map &map, char *buffer, int buflen)
 {
-    int len;
-    bpf_hdr *bpf_h = reinterpret_cast<bpf_hdr *>(buffer);
-    len = read(fd, buffer, buflen);
-    if(len >= sizeof(struct bpf_hdr) && len >= bpf_h->bh_hdrlen + 0x2a 
-        && buffer[bpf_h->bh_hdrlen + 0x12] == 0x06
-        && buffer[bpf_h->bh_hdrlen + 0x13] == 0x04)
-    {
-        memcpy(&p.ip.sin_addr.s_addr, buffer + bpf_h->bh_hdrlen + 0x1c, sizeof(struct in_addr));
-        memcpy((uint8_t *)&p.mac, buffer + bpf_h->bh_hdrlen + 0x16, ETHER_ADDR_LEN);
-        return true;
+    int read_bytes;
+    bool result = false;
+    memset(buffer, 0, buflen);
+    if((read_bytes = read(fd, buffer, buflen)) > 0){
+        char* ptr = reinterpret_cast<char*>(buffer);
+        bpf_hdr* bpf_packet;
+        while(ptr < buffer + read_bytes){
+            bpf_packet = reinterpret_cast<bpf_hdr*>(ptr);
+            if(buffer[bpf_packet->bh_hdrlen + 0x12] == 0x06
+            && buffer[bpf_packet->bh_hdrlen + 0x13] == 0x04){
+                in_addr addr; ether_addr mac;
+                memcpy(&addr, ptr + bpf_packet->bh_hdrlen + 0x1c, sizeof(struct in_addr));
+                memcpy((uint8_t *)&mac, ptr+ bpf_packet->bh_hdrlen + 0x16, ETHER_ADDR_LEN);
+                std::string addr_string = inet_ntoa(addr);
+                if(map.find(addr_string) != map.end()){
+                    if(map[addr_string].empty())
+                        map[addr_string] = ether_ntoa(&mac);
+                }else map.insert(std::make_pair(addr_string, ether_ntoa(&mac)));
+                result = true;
+            }
+            ptr += BPF_WORDALIGN(bpf_packet->bh_hdrlen + bpf_packet->bh_caplen);
+        }
     }
-    return false;
+    return result;
 }
 
 bool set_bpf_arp(int &fd, int &buflen, const char *interface)

@@ -11,6 +11,7 @@ class TcpHandshakeAnalizer : public IEvent{
     int bpf_fd;
    // int manual_sd;
     bool end;
+    bool SetBpfDevice(bpf_program& filter, const char* net_interface);
 public:
     TcpHandshakeAnalizer(in_addr a_from, ports_storage& a_ports)
         :  ports(a_ports), from(a_from),  bpf_fd(0), end(false) {}
@@ -19,7 +20,7 @@ public:
     void SetEnd(){end = true;}
     bool End()const override{return end;}
     void OnError() override{errors::SysRet("ERROR: on analyzing tcp packet"); end = true;}
-    short ListeningEvents()const override{return Any;} //Error;}
+    short ListeningEvents()const override{return Any;} 
     int GetDescriptor() const override{return bpf_fd;}
     void OnAnyEvent() override;
     virtual ~TcpHandshakeAnalizer(){close(bpf_fd); delete[] bpf_buffer;}
@@ -38,39 +39,46 @@ static int find_bpf_device()
     return res;
 }
 
+bool TcpHandshakeAnalizer::SetBpfDevice(bpf_program& filter, const char* net_interface)
+{
+    bool res;
+    struct ifreq ir;
+    bpf_buffer_size = 1;
+    strncpy(ir.ifr_name, net_interface, IFNAMSIZ);
+    res = ioctl(bpf_fd, BIOCSETIF, &ir) != -1 && 
+        ioctl(bpf_fd, BIOCIMMEDIATE, &bpf_buffer_size) != -1 &&
+        ioctl(bpf_fd, BIOCGBLEN, &bpf_buffer_size) != -1;
+    timeval timeout = {.tv_sec = 0, .tv_usec = 1000};
+    ioctl(bpf_fd, BIOCSRTIMEOUT, &timeout);
+    res = ioctl(bpf_fd, BIOCSETF, &filter) != -1;
+    bpf_buffer = (bpf_hdr*)new char[bpf_buffer_size];
+    return res;
+}
+
 bool TcpHandshakeAnalizer::Init(const char* net_interface)
 {
     bool res = false;
    //if(raw_packets::make_manual_socket(manual_sd, IPPROTO_TCP)){
     bpf_fd = find_bpf_device();
     if(bpf_fd != -1){
-struct bpf_insn insns[] = {
-    // Load word at octet 12
-    BPF_STMT(BPF_LD | BPF_H | BPF_ABS, 12),
-    BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, ETHERTYPE_IP, 0, 3),
+        struct bpf_insn insns[] = {
+            // Load word at octet 12
+            BPF_STMT(BPF_LD | BPF_H | BPF_ABS, 12),
+            BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, ETHERTYPE_IP, 0, 3),
 
-    BPF_STMT(BPF_LD | BPF_B | BPF_ABS, 23),
-    BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, IPPROTO_TCP, 0, 1),
-    // Valid TCP reply received, return message
-    BPF_STMT(BPF_RET | BPF_K, sizeof(tcphdr) + sizeof(ip) + sizeof(ether_header)),
-    // Return nothing
-    BPF_STMT(BPF_RET | BPF_K, 0),
-};
-struct bpf_program filter = {
-    sizeof insns / sizeof(insns[0]),
-    insns
-};
-        struct ifreq ir;
-        bpf_buffer_size = 1;
-        strncpy(ir.ifr_name, net_interface, IFNAMSIZ);
-        res = ioctl(bpf_fd, BIOCSETIF, &ir) != -1 && 
-        ioctl(bpf_fd, BIOCIMMEDIATE, &bpf_buffer_size) != -1 &&
-        ioctl(bpf_fd, BIOCGBLEN, &bpf_buffer_size) != -1;
-        timeval timeout = {.tv_sec = 0, .tv_usec = 1000};
-        ioctl(bpf_fd, BIOCSRTIMEOUT, &timeout);
-        res = ioctl(bpf_fd, BIOCSETF, &filter) != -1;
+            BPF_STMT(BPF_LD | BPF_B | BPF_ABS, 23),
+            BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, IPPROTO_TCP, 0, 1),
+            // Valid TCP reply received, return message
+            BPF_STMT(BPF_RET | BPF_K, sizeof(tcphdr) + sizeof(ip) + sizeof(ether_header)),
+            // Return nothing
+            BPF_STMT(BPF_RET | BPF_K, 0),
+        };
+        struct bpf_program filter = {
+            sizeof insns / sizeof(insns[0]),
+            insns
+        };
+        res = SetBpfDevice(filter, net_interface);
     }
-   bpf_buffer = (bpf_hdr*)new char[bpf_buffer_size];
    return res;
 }
 
@@ -153,48 +161,67 @@ bool PortScanner::CheckPreviousPorts()
     }
     return result; 
 }
+bool PortScanner::Prepare()
+{
+    if(!raw_packets::make_manual_socket(manual_sd, IPPROTO_TCP))
+        return true;
+    for(int i = 0; i < scanners_size / 8 + 1; i++){
+        TcpHandshakeAnalizer* reciver = new TcpHandshakeAnalizer(dest.sin_addr, ports);
+        if(reciver->Init(master.manager.GetInterface().c_str())){
+            master.AddToSelector(reciver);
+            recivers.push_back(reciver);
+        }
+        else delete reciver;
+    }
+    return false;
+}
 
 bool PortScanner::UrgentExecute()
 {
     bool result = false;    
-    if(ports_it == ports.begin()){
-        if(!raw_packets::make_manual_socket(manual_sd, IPPROTO_TCP))
-            return true;
-        for(int i = 0; i < scanners_size / 8 + 1; i++){
-            TcpHandshakeAnalizer* reciver = new TcpHandshakeAnalizer(dest.sin_addr, ports);
-            if(reciver->Init(master.manager.GetInterface().c_str())){
-                master.AddToSelector(reciver);
-                recivers.push_back(reciver);
-            }
-            else delete reciver;
+    if(ports_it == ports.begin())
+        result = Prepare();
+    if(!master.manager.IsPortScanStop()){
+        if(CheckPreviousPorts()){
+            if(ports_it != ports.end())
+                SendSyn();
+            else
+                result = ReleaseResources();
         }
-    }
-    if(master.manager.IsPortScanStop()){
-        ports_it = ports.end();
-        master.manager.StoppedPortScan();
-    }
-    if(CheckPreviousPorts()){
-        char packet_buffer[1024] = {};
-        wait_counter = 0;
-        if(ports_it != ports.end()){
-            for(int i = 0; ports_it != ports.end() && i < scanners_size; ports_it++, i++){
-                dest.sin_port = htons(ports_it->first);
-                raw_packets::send_tcp_flag(manual_sd, &src, &dest, TH_SYN, packet_buffer);
-                previous_ports.push_back(ports_it->first);
-            }
-            src.sin_port++;
-            if(statistic)
-                statistic->RecordStatistic(this);
-        } else {
-            std::for_each(recivers.begin(), recivers.end(), 
-                [](TcpHandshakeAnalizer* r){r->SetEnd();});
-            master.manager.AddPorts(inet_ntoa(dest.sin_addr), ports);
-            close(manual_sd);
-            if(statistic)delete statistic;
-            result = true;
-        }
+    } else {
+        result = ReleaseResources();
     }
     return result;
+}
+
+void PortScanner::SendSyn()
+{
+    char packet_buffer[1024] = {};
+    wait_counter = 0;
+    for(int i = 0; ports_it != ports.end() && i < scanners_size; ports_it++, i++){
+        dest.sin_port = htons(ports_it->first);
+        if(raw_packets::send_tcp_flag(manual_sd, &src, &dest, TH_SYN, packet_buffer))
+            previous_ports.push_back(ports_it->first);
+        else {
+            if(statistic)
+                statistic->ShowMistake("Mistake while sending tcp packet.");
+            master.manager.UsrStopPortScan();
+            break;
+        }
+        src.sin_port++;
+        if(statistic)statistic->RecordStatistic(this);
+    }
+}
+
+bool PortScanner::ReleaseResources()
+{
+    std::for_each(recivers.begin(), recivers.end(), 
+        [](TcpHandshakeAnalizer* r){r->SetEnd();});
+    master.manager.AddPorts(inet_ntoa(dest.sin_addr), ports, ports_it);
+    close(manual_sd);
+    master.manager.StoppedPortScan();
+    if(statistic)delete statistic;
+    return true;
 }
 
 int PortScanner::GetCurrentCount()const

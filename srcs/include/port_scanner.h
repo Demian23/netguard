@@ -12,7 +12,6 @@ public:
     inline int GetPortsSize() const{return ports.size();}
     int GetCurrentCount() const;
     std::string GetAim()const;
-    bool CheckPreviousPorts(); // if true, than can go on
 private:
     Scheduler& master;
     ports_storage ports;
@@ -25,6 +24,11 @@ private:
     int manual_sd;
     short wait_counter;
     int scanners_size;
+    bool CheckPreviousPorts(); // if true, than can go on
+    bool Prepare();
+    bool ReleaseResources();
+    void SendSyn();
 };
+
 
 #endif // !PORT_SCANNER_DEF

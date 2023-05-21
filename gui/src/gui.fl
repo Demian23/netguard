@@ -15,7 +15,7 @@ class NetGuardUserInterface {open
       } {
         Fl_Group grp_nodes {
           label Nodes open
-          xywh {15 40 1000 725} labelsize 18
+          xywh {15 40 1000 725} labelsize 18 hide
         } {
           Fl_Browser brws_nodes {
             label {Nodes list}
@@ -70,54 +70,54 @@ class NetGuardUserInterface {open
               xywh {570 100 380 470} labelsize 18
             } {}
             Fl_Button btn_stop_ports_scan {
-              label {stop scan} selected
+              label {stop scan}
               xywh {815 660 100 35} labelsize 18
             }
           }
         }
         Fl_Group grp_settings {
           label Settings open
-          xywh {20 50 1000 710} labelsize 18 hide
+          xywh {20 50 1000 710} labelsize 18
         } {
           Fl_Choice choice_interface {
             label interface open
-            xywh {50 70 120 30} down_box BORDER_BOX labelsize 18 align 5 textsize 18
+            xywh {55 155 160 40} down_box BORDER_BOX labelsize 18 align 5 textsize 18
           } {}
           Fl_Output out_own_ip {
             label ip
-            xywh {262 68 160 30} labelsize 18 align 5 textsize 18
+            xywh {275 155 160 40} labelsize 18 align 5 textsize 18
           }
           Fl_Output out_own_mask {
             label mask
-            xywh {262 130 160 30} labelsize 18 align 5 textsize 18
+            xywh {275 245 160 40} labelsize 18 align 5 textsize 18
           }
           Fl_Button btn_scan {
             label {full scan}
-            xywh {65 375 155 40} labelsize 18
+            xywh {54 595 155 40} labelsize 18
           }
           Fl_Progress progress {
-            label {scan progress}
-            xywh {45 310 380 40} labelsize 18
+            label {scan progress} selected
+            xywh {55 515 380 40} labelsize 18
           }
           Fl_Output out_own_mac {
             label mac
-            xywh {263 185 160 30} labelsize 18 align 5 textsize 18
+            xywh {275 335 160 40} labelsize 18 align 5 textsize 18
           }
           Fl_Input first_ip {
             label first
-            xywh {50 136 160 30} labelsize 18 align 5 textsize 18
+            xywh {55 245 160 40} labelsize 18 align 5 textsize 18
           }
           Fl_Input last_ip {
             label last
-            xywh {50 195 160 30} labelsize 18 align 5 textsize 18
+            xywh {55 335 160 40} labelsize 18 align 5 textsize 18
           }
           Fl_Output out_net {
             label net
-            xywh {263 240 160 30} labelsize 18 align 5 textsize 18
+            xywh {275 425 160 40} labelsize 18 align 5 textsize 18
           }
           Fl_Light_Button btn_active_mode {
             label {active mode}
-            xywh {50 241 165 30} labelsize 18 align 16
+            xywh {55 425 160 40} labelsize 18 align 16
           }
           Fl_Text_Display log_display {
             label Logs
@@ -125,7 +125,7 @@ class NetGuardUserInterface {open
           }
           Fl_Button btn_stop_full_scan {
             label {stop scan}
-            xywh {245 375 155 40} labelsize 18
+            xywh {281 595 155 40} labelsize 18
           }
         }
       }

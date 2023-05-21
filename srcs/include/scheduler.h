@@ -25,6 +25,7 @@ public:
 class Statistic{
 public:
     virtual void RecordStatistic(Task* task) = 0;
+    virtual void ShowMistake(std::string mistake_msg){}
     virtual ~Statistic(){}
 };
 

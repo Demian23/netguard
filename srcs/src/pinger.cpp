@@ -109,23 +109,67 @@ bool Pinger::SendEcho()
 
 void Pinger::UpdateDevices()
 {
-    const std::set<std::string>& ip_set = static_cast<RecvEcho*>(reciver)->GetIps();
+    const std::set<std::string>& ip_set = reciver->GetIps();
     std::set<std::string>::const_iterator ip_set_it = ip_set.begin();
-    master.manager.SetAllNodesInactive();
     for(;ip_set_it != ip_set.end(); ip_set_it++){
-        NetNode new_node; 
-        new_node.is_active = true;
-        new_node.ipv4_address = *ip_set_it;
-        sockaddr_in temp;temp.sin_family = AF_INET; 
-        temp.sin_addr = IP::str_to_ip(new_node.ipv4_address.c_str());
-        new_node.name = IP::get_name(&temp);
-        master.manager.AddNode(new_node);
+        NetNode* temp = master.manager.GetNodeByIp(ip_set_it->c_str());
+        if(!temp){
+            NetNode new_node; 
+            new_node.is_active = true;
+            new_node.ipv4_address = *ip_set_it;
+            sockaddr_in temp;temp.sin_family = AF_INET; 
+            temp.sin_addr = IP::str_to_ip(new_node.ipv4_address.c_str());
+            new_node.name = IP::get_name(&temp);
+            master.manager.AddNode(new_node);
+        }
     }
-    master.manager.AlarmInactiveNodes();
-    reinterpret_cast<RecvEcho*>(reciver)->SetEnd();
+    reciver->SetEnd();
 }
 
 int Pinger::GetCurrentCount() const
 {
     return std::distance(ips_set.begin(), it);
+}
+
+NodesAvailabilityChecker::NodesAvailabilityChecker(Scheduler& m, 
+    std::vector<std::string> ips_to_check) : master(m), check_ips(ips_to_check)
+{
+    raw_packets::make_raw_socket(send_sd, IPPROTO_ICMP);  
+    send_in_time = 1;
+    it = check_ips.begin();
+    reciver = new RecvEcho;
+}
+
+bool NodesAvailabilityChecker::Execute()
+{
+    bool result = false;
+    if(it == check_ips.begin()){
+        master.AddToSelector(reciver);
+    }
+    if(it != check_ips.end()){
+        for(int i = 0; i < send_in_time && it != check_ips.end(); i++, it++){
+            sockaddr_in dest_addr = host_addr::set_addr((*it).c_str(), AF_INET);
+            raw_packets::send_echo(send_sd, raw_packets::get_id(), 0, 
+                &dest_addr, sizeof(dest_addr));
+        }
+    } else {
+        UpdateActiveDevices();
+        master.manager.AlarmInactiveNodes();
+        reciver->SetEnd();
+        close(send_sd);
+        result = true;
+    }
+    return result;
+}
+
+void NodesAvailabilityChecker::UpdateActiveDevices()
+{
+    std::set<std::string> recived_set = reciver->GetIps();
+    for(const std::string& ip : check_ips){
+       if(recived_set.find(ip) == recived_set.end()){
+            NetNode*temp = master.manager.GetNodeByIp(ip);
+            if(temp) temp->is_active = false;
+       } 
+    }
+    master.manager.Change();
 }

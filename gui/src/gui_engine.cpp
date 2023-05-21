@@ -51,6 +51,7 @@ class PingerStatistic : public Statistic{
 public:
     PingerStatistic(Fl_Progress *progress):progress_bar(progress){}
     void RecordStatistic(Task *task) override;
+    void ShowMistake(std::string mistake_msg)override{fl_alert("%s", mistake_msg.c_str());}
     virtual ~PingerStatistic(){progress_bar->value(progress_bar->minimum());}
 private:
     Fl_Progress* progress_bar;
@@ -237,6 +238,8 @@ void clbk_full_scan(Fl_Widget *w, void *data)
             n->schedule->AddOrdinaryTask(new FindGate(*n->schedule));
             n->schedule->WakeUp();
         }else{
+            n->first_ip->value(IP::first_ip(n->out_net->value()).c_str());
+            n->last_ip->value(IP::last_ip(n->out_net->value(), n->out_own_mask->value()).c_str());
             fl_alert("Wrong ip range!");
         }
     } else {
@@ -274,7 +277,7 @@ void clbk_nodes_brws(Fl_Widget *w, void *data)
         n->out_name->value(node->name.c_str());
         n->out_type->value(node->type.c_str());
         n->updatePortsBrowser(node->ipv4_address);
-        if(node->type != "Own host")
+        if(node->type != "Own host" && node->is_active)
             n->btn_ports_scan->activate();
         else 
             n->btn_ports_scan->deactivate();
@@ -296,7 +299,7 @@ void clbk_port_scan(Fl_Widget* w, void *data)
     NetGuardUserInterface* n = reinterpret_cast<NetGuardUserInterface*>(data); 
     std::string dest_ip = n->out_ip->value();
     std::string src_ip = n->out_own_ip->value();
-    if(!dest_ip.empty()){
+    if(!dest_ip.empty() && n->schedule->manager.GetNodeByIp(dest_ip)->is_active){
         n->schedule->AddUrgentTask(new PortScanner(*n->schedule, 
           get_ports(n->brws_ports), dest_ip, 
             new PortScannerStatistic(n->ports_scan_progress)));

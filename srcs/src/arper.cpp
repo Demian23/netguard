@@ -19,21 +19,20 @@ bool Arper::Execute()
     ARP::set_bpf_arp(fd, buffer_length, interface.c_str());
     char *bpf_buffer = new char[buffer_length];
     std::vector<std::string> ips = master.manager.GetIps(); 
+    ARP::ip_mac_map map;
     for(std::string ip : ips){
-        NetNode* temp = master.manager.GetNodeByIp(ip);
-        if(temp->mac_address.empty()){
-            int counter = 0; bool find;
-            ARP::arp_pair p;
-            do{
-                ARP::writequery(fd, &own_mac, &own_ip, ip.c_str());
-                find = ARP::collectresponse(fd, p, bpf_buffer, buffer_length);
-                find &= ip == inet_ntoa(p.ip.sin_addr);
-                counter++;
-            }while(!find && counter < 5);
-            if(find){
-                temp->mac_address = MAC::mac_to_string(p.mac);
-                temp->vendor = MAC::get_vendor(p.mac);
-            }
+        short counter = 0;
+        do{
+            ARP::writequery(fd, &own_mac, &own_ip, ip.c_str());
+            counter++;
+        }while(!ARP::collectresponse(fd, map, bpf_buffer, buffer_length) && counter < 3);
+    }
+    for(const auto& el : map){
+        NetNode* temp = master.manager.GetNodeByIp(el.first);
+        if(temp && !el.second.empty()){
+            temp->mac_address = el.second;
+            ether_addr* mac = ether_aton(temp->mac_address.c_str());
+            temp->vendor = MAC::get_vendor(*mac);
         }
     }
     master.manager.Change();

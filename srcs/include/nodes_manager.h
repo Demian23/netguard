@@ -26,7 +26,7 @@ public:
     NodesManager() : changed(false), user_full_scan_stop(false), user_port_scan_stop(false){}
     const std::set<std::string>& GetIpSet()const;
     void AddNode(const NetNode& node);
-    void AddPorts(const std::string& ip, const ports_storage& new_ports);
+    void AddPorts(const std::string& ip, const ports_storage& new_ports, ports_storage::iterator& end_it);
     void SetInterface(const std::string& a_interface);
     void SetIpSet(const std::set<std::string>& ips);
     const std::string& GetInterface() const;
@@ -38,6 +38,7 @@ public:
     std::vector<uint16_t> GetSortedPorts(const std::string& ip);
     std::vector<std::string> GetSortedIps();
     std::vector<std::string> GetIps()const;
+    std::vector<std::string> GetActiveIps()const;
     NetNode* GetNodeByIp(const std::string& ip);
     const char*const GetPortCond(const std::string& ip, uint16_t port);
     std::string GetService(uint16_t port);
