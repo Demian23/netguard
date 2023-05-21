@@ -16,6 +16,8 @@ void clbk_port_scan(Fl_Widget* w, void *data);
 void clbk_select_all(Fl_Widget*, void* data);
 void clbk_clean_all(Fl_Widget*, void* data);
 void clbk_btn_active_mode(Fl_Widget*, void* data);
+void clbk_stop_port_scan(Fl_Widget*, void* data);
+void clbk_stop_full_scan(Fl_Widget*, void* data);
 
 
 class PortsTable : public Fl_Table_Row{

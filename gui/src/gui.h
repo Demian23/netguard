@@ -52,6 +52,8 @@ public:
   Fl_Text_Display *log_display;
   Fl_Text_Buffer* log_buffer;
   PortsTable* table;
+  Fl_Button *btn_stop_ports_scan;
+  Fl_Button *btn_stop_full_scan;
   Scheduler* schedule;
   void show();
   void updateNodesBrowser();

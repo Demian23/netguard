@@ -73,6 +73,10 @@ Pinger::~Pinger()
 bool Pinger::Execute()
 {
     bool result = false;
+    if(master.manager.IsFullSanStop()){
+        it = ips_set.end();
+        master.manager.StoppedFullScan();
+    }
     if(reciver == 0){
         reciver = new RecvEcho();
         master.AddToSelector(reciver);

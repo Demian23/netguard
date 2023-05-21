@@ -169,6 +169,10 @@ bool PortScanner::UrgentExecute()
             else delete reciver;
         }
     }
+    if(master.manager.IsPortScanStop()){
+        ports_it = ports.end();
+        master.manager.StoppedPortScan();
+    }
     if(CheckPreviousPorts()){
         char packet_buffer[1024] = {};
         wait_counter = 0;

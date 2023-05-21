@@ -18,24 +18,25 @@ bool Arper::Execute()
     int fd, buffer_length;
     ARP::set_bpf_arp(fd, buffer_length, interface.c_str());
     char *bpf_buffer = new char[buffer_length];
-    NetMap& map = master.manager.GetMap();
-    for(NetMap::iterator it = map.begin(); it != map.end(); it++){
-        if(it->second.mac_address.empty()){
+    std::vector<std::string> ips = master.manager.GetIps(); 
+    for(std::string ip : ips){
+        NetNode* temp = master.manager.GetNodeByIp(ip);
+        if(temp->mac_address.empty()){
             int counter = 0; bool find;
             ARP::arp_pair p;
             do{
-                ARP::writequery(fd, &own_mac, &own_ip, it->first.c_str());
+                ARP::writequery(fd, &own_mac, &own_ip, ip.c_str());
                 find = ARP::collectresponse(fd, p, bpf_buffer, buffer_length);
-                find &= it->first == inet_ntoa(p.ip.sin_addr);
+                find &= ip == inet_ntoa(p.ip.sin_addr);
                 counter++;
             }while(!find && counter < 5);
             if(find){
-                it->second.mac_address = MAC::mac_to_string(p.mac);
-                it->second.vendor = MAC::get_vendor(p.mac);
-                master.manager.Change();
+                temp->mac_address = MAC::mac_to_string(p.mac);
+                temp->vendor = MAC::get_vendor(p.mac);
             }
         }
     }
+    master.manager.Change();
     delete[] bpf_buffer;
     close(fd);
     return true;

@@ -230,7 +230,7 @@ void clbk_full_scan(Fl_Widget *w, void *data)
             ether_addr* temp = ether_aton(own_device.mac_address.c_str());
             own_device.vendor = MAC::get_vendor(*temp);
             ip_set.erase(own_device.ipv4_address);
-            n->schedule->manager.SetIps(ip_set);
+            n->schedule->manager.SetIpSet(ip_set);
             n->schedule->manager.AddNode(own_device);
             n->schedule->AddOrdinaryTask(new Pinger(*n->schedule, new PingerStatistic(n->progress)));
             n->schedule->AddOrdinaryTask(new Arper(*n->schedule));
@@ -336,4 +336,18 @@ void clbk_btn_active_mode(Fl_Widget *, void *data)
     } else {
         n->schedule->TurnOffActiveMode();
     }
+}
+
+void clbk_stop_full_scan(Fl_Widget *, void *data)
+{
+    NetGuardUserInterface* n = reinterpret_cast<NetGuardUserInterface*>(data); 
+    if(n->progress->value() > n->progress->minimum())
+        n->schedule->manager.UsrStopFullScan();
+}
+
+void clbk_stop_port_scan(Fl_Widget *w, void *data)
+{
+    NetGuardUserInterface* n = reinterpret_cast<NetGuardUserInterface*>(data); 
+    if(n->ports_scan_progress->value() > n->ports_scan_progress->minimum())
+        n->schedule->manager.UsrStopPortScan();
 }

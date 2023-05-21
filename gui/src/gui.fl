@@ -43,7 +43,7 @@ class NetGuardUserInterface {open
             }
             Fl_Button btn_ports_scan {
               label {scan ports}
-              xywh {715 657 100 35} labelsize 18
+              xywh {615 655 100 35} labelsize 18
             }
             Fl_Check_Browser brws_ports {
               label {choose ports to scan}
@@ -66,9 +66,13 @@ class NetGuardUserInterface {open
               xywh {320 670 80 40} labelsize 18
             }
             Fl_Table table_ports {
-              label Ports open selected
+              label Ports open
               xywh {570 100 380 470} labelsize 18
             } {}
+            Fl_Button btn_stop_ports_scan {
+              label {stop scan} selected
+              xywh {815 660 100 35} labelsize 18
+            }
           }
         }
         Fl_Group grp_settings {
@@ -89,7 +93,7 @@ class NetGuardUserInterface {open
           }
           Fl_Button btn_scan {
             label {full scan}
-            xywh {160 375 155 40} labelsize 18
+            xywh {65 375 155 40} labelsize 18
           }
           Fl_Progress progress {
             label {scan progress}
@@ -118,6 +122,10 @@ class NetGuardUserInterface {open
           Fl_Text_Display log_display {
             label Logs
             xywh {500 70 500 650} labelsize 18 textsize 18
+          }
+          Fl_Button btn_stop_full_scan {
+            label {stop scan}
+            xywh {245 375 155 40} labelsize 18
           }
         }
       }

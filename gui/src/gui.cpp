@@ -48,7 +48,7 @@ NetGuardUserInterface::NetGuardUserInterface(Scheduler* a_sched) : schedule(a_sc
             out_vendor->textsize(18);
             out_vendor->align(Fl_Align(FL_ALIGN_TOP_LEFT));
           } // Fl_Output* out_vendor
-          { btn_ports_scan = new Fl_Button(715, 657, 100, 35, "scan ports");
+          { btn_ports_scan = new Fl_Button(615, 655, 100, 35, "scan ports");
             btn_ports_scan->labelsize(18);
             btn_ports_scan->callback(clbk_port_scan, this);
           } // Fl_Button* btn_ports_scan
@@ -78,6 +78,10 @@ NetGuardUserInterface::NetGuardUserInterface(Scheduler* a_sched) : schedule(a_sc
             btn_choos_all_ports->labelsize(18);
             btn_choos_all_ports->callback(clbk_select_all, brws_ports);
           } // Fl_Button* btn_choos_all_ports
+        { btn_stop_ports_scan = new Fl_Button(810, 655, 100, 35, "stop scan");
+          btn_stop_ports_scan->labelsize(18);
+          btn_stop_ports_scan->callback(clbk_stop_port_scan, this);
+        } // Fl_Button* btn_stop_ports_scan
           grp_node_info->end();
         } // Fl_Group* grp_node_info
         grp_nodes->end();
@@ -102,7 +106,7 @@ NetGuardUserInterface::NetGuardUserInterface(Scheduler* a_sched) : schedule(a_sc
           out_own_mask->textsize(18);
           out_own_mask->align(Fl_Align(FL_ALIGN_TOP_LEFT));
         } // Fl_Output* out_own_mask
-        { btn_scan = new Fl_Button(160, 375, 155, 40, "full scan");
+        { btn_scan = new Fl_Button(65, 375, 155, 40, "full scan");
           btn_scan->labelsize(18);
           btn_scan->callback(clbk_full_scan, this);
         } // Fl_Button* btn_scan
@@ -140,6 +144,10 @@ NetGuardUserInterface::NetGuardUserInterface(Scheduler* a_sched) : schedule(a_sc
           log_buffer = new Fl_Text_Buffer;
           log_display->buffer(log_buffer);
         } // Fl_Text_Display* log_display
+        { btn_stop_full_scan = new Fl_Button(245, 375, 155, 40, "stop scan");
+          btn_stop_full_scan->labelsize(18);
+          btn_stop_full_scan->callback(clbk_stop_full_scan, this);
+        } // Fl_Button* btn_stop_full_scan
         grp_settings->end();
       } // Fl_Group* grp_settings
       tbs_main->end();

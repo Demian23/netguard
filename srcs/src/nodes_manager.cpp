@@ -32,13 +32,10 @@ void NodesManager::SetInterface(const std::string &a_interface)
     } 
 }
 
-void NodesManager::SetIps(const std::set<std::string> &ips)
+void NodesManager::SetIpSet(const std::set<std::string> &ips)
 {
     ip_set = ips;
 }
-
-NetMap& NodesManager::GetMap(){return nodes_map;}
-
 
 const std::string& NodesManager::GetInterface() const
 {
@@ -125,6 +122,14 @@ std::vector<std::string> NodesManager::GetSortedIps()
         return first > second;
     };
     std::sort(res.begin(), res.end(), ip_compare);
+    return res;
+}
+
+std::vector<std::string> NodesManager::GetIps()const
+{
+    std::vector<std::string> res;
+    for(auto& node : nodes_map)
+        res.push_back(node.first);
     return res;
 }
 
