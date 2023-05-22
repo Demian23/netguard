@@ -1,12 +1,18 @@
-#include "../include/nodes_manager.h"
-#include "../include/errors.h"
 #include <netdb.h>
+
+#include "../include/errors.h"
 #include "../include/ip.h"
+#include "../include/nodes_manager.h"
 
 const char* ports_conditions[] = {"Unset", "Open", "Closed", "Filtered"};
 
 NetNode::NetNode() : type("Host"){}
 
+NodesManager::NodesManager() 
+    : changed(false), user_full_scan_stop(false), user_port_scan_stop(false)
+{
+    InitServices();
+}
 void NodesManager::AddNode(const NetNode &node)
 {
     auto it = nodes_map.find(node.ipv4_address);
@@ -32,9 +38,9 @@ void NodesManager::SetInterface(const std::string &a_interface)
     } 
 }
 
-void NodesManager::SetIpSet(const std::set<std::string> &ips)
+void NodesManager::SetIpsToScan(const std::vector<std::string> &ips)
 {
-    ip_set = ips;
+    ips_to_scan = ips;
 }
 
 const std::string& NodesManager::GetInterface() const
@@ -53,7 +59,7 @@ const NetNode& NodesManager::GetOwnNode()const
     return nodes_map.end()->second;
 }
 
-const std::set<std::string>& NodesManager::GetIpSet() const{return ip_set;}
+const std::vector<std::string>& NodesManager::GetIpsToScan() const{return ips_to_scan;}
 
 void NodesManager::AddPorts(const std::string &ip, const ports_storage &new_ports, ports_storage::iterator& end_it)
 {
@@ -136,21 +142,6 @@ std::vector<std::string> NodesManager::GetIps()const
 const char*const NodesManager::GetPortCond(const std::string &ip, uint16_t port)
 {
     return ports_conditions[nodes_map[ip].ports[port]];
-}
-
-void NodesManager::SetAllNodesInactive()
-{
-    for (auto& node : nodes_map) {
-        if(node.second.type != "Own host")
-            node.second.is_active = false; 
-    }
-}
-
-void NodesManager::AlarmInactiveNodes()
-{
-    for(auto& node : nodes_map) 
-        if(!node.second.is_active)
-            errors::Msg("ALARM: %s(%s) is unavailable", node.second.ipv4_address.c_str(), node.second.name.c_str());
 }
 
 NetNode* NodesManager::GetNodeByIp(const std::string &ip)

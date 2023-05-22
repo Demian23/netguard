@@ -1,6 +1,4 @@
-#include <algorithm>
 #include <errno.h>
-
 #include "../include/event_selector.h"
 
 void EventSelector::AddEvent(IEvent *e)

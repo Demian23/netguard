@@ -1,10 +1,7 @@
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <netdb.h>
 #include <sstream>
-#include "../include/errors.h"
 
+#include "../include/errors.h"
 #include "../include/ip.h"
 
 namespace IP{
@@ -51,13 +48,13 @@ bool check_ip_range(const std::string& net, const std::string& mask, const std::
    else return false;
 }
 
-std::set<std::string> all_ipv4_from_range(const std::string &first, const std::string &last)
+std::vector<std::string> all_ipv4_from_range(const std::string &first, const std::string &last)
 {
     uint32_t first_ip = ipv4_to_number(first);
     uint32_t last_ip = ipv4_to_number(last);
-    std::set<std::string> res;
+    std::vector<std::string> res;
     for(uint32_t iter = first_ip; iter <= last_ip; iter++){
-        res.insert(number_to_ipv4(iter));
+        res.push_back(number_to_ipv4(iter));
     }
     return res;
 }
@@ -119,19 +116,6 @@ std::string ipv4_net(const std::string& some_ip, const std::string& mask)
     return number_to_ipv4(ip_n & mask_n);
 }
 
-std::set<std::string> all_net_ipv4(const std::string& net, uint32_t start,
-    uint32_t interval_size)
-{
-    uint32_t net_number = ipv4_to_number(net);
-    net_number += start;
-    std::set<std::string> res;
-    for(int i = 0; i < interval_size; i++){
-        net_number++;
-        res.insert(number_to_ipv4(net_number));
-    }
-    return res; 
-}
-
 std::string first_ip(const std::string& net)
 {
     return number_to_ipv4(ipv4_to_number(net)+1);
@@ -164,18 +148,6 @@ std::string number_to_ipv4(const uint32_t number)
         itoa(temp & 0xFF, buff[i]);
     }
     return std::string(buff[0]) + "." + buff[1] + "." + buff[2] + "." + buff[3];
-}
-
-DevType devtype_from_vendor(const char *vendor)
-{
-    const char *cp_vendors[] = {"TP-LINK TECHNOLOGIES CO.,LTD.", 
-        "Cisco Systems, Inc", "D-Link Corporation"};
-    for(int i = 0; i < 1; i++){
-        if(strlen(cp_vendors[i]) == strlen(vendor))
-            if(strcmp(cp_vendors[i], vendor) == 0)
-                return customer_premise;
-    }
-    return endpoint;
 }
 
 static void reverse(char s[])

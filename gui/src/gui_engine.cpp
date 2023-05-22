@@ -47,6 +47,42 @@ void GuiUpdater::OnAnyEvent()
         interface.log_buffer->append(buffer);
 }
 
+
+class ScanPortsIfAvailable : public UrgentTask{
+public:
+    ScanPortsIfAvailable(PortScanner* scan, NodesManager* m) 
+        : scanner(scan), manager(m), condition(false){}
+    void ConditionDone(){condition = true;}
+    bool UrgentExecute()override;
+    virtual ~ScanPortsIfAvailable(){delete scanner;}
+private:
+    PortScanner* scanner;
+    NodesManager* manager;
+    bool condition;
+};
+
+class AvailabilityUpdate : public Task{
+public:
+    AvailabilityUpdate(ScanPortsIfAvailable* t) : task(t){}
+    virtual ~AvailabilityUpdate(){task->ConditionDone();}
+private:
+    ScanPortsIfAvailable* task;
+    
+};
+
+bool ScanPortsIfAvailable::UrgentExecute()
+{
+    bool result = false;
+    if(condition){
+        if(manager->GetNodeByIp(scanner->GetAim())->is_active){
+            result = scanner->UrgentExecute(); 
+        } else {
+            result = true;
+        }
+    }
+    return result;
+}
+
 class PingerStatistic : public Statistic{
 public:
     PingerStatistic(Fl_Progress *progress):progress_bar(progress){}
@@ -59,7 +95,7 @@ private:
 
 void PingerStatistic::RecordStatistic(Task *task)
 {
-    Pinger* p = static_cast<Pinger*>(task);
+    UsrPinger* p = static_cast<UsrPinger*>(task);
     float percent = (float)p->GetCurrentCount() * 100 / p->GetIpsSize();
     progress_bar->value(percent);
     Fl::awake();
@@ -217,9 +253,10 @@ void clbk_full_scan(Fl_Widget *w, void *data)
         std::string last_ip_string = n->last_ip->value();
         if(IP::is_valid_ip_string(first_ip_string) && IP::is_valid_ip_string(last_ip_string) 
         && IP::check_ip_range(n->out_net->value(), n->out_own_mask->value(), first_ip_string, last_ip_string)){
-            std::set<std::string> ip_set = 
+            std::vector<std::string> ips_to_scan= 
                 IP::all_ipv4_from_range(first_ip_string, last_ip_string);
             IEvent* updater = GuiUpdater::Make(*n);
+            n->btn_active_mode->activate();
             if(updater != 0)
                 n->schedule->AddToSelector(updater);
             NetNode own_device;
@@ -230,10 +267,12 @@ void clbk_full_scan(Fl_Widget *w, void *data)
             own_device.is_active = true;
             ether_addr* temp = ether_aton(own_device.mac_address.c_str());
             own_device.vendor = MAC::get_vendor(*temp);
-            ip_set.erase(own_device.ipv4_address);
-            n->schedule->manager.SetIpSet(ip_set);
+            std::vector<std::string>::iterator new_end = std::remove(ips_to_scan.begin(), ips_to_scan.end(), own_device.ipv4_address);
+            ips_to_scan.erase(new_end, ips_to_scan.end());
+            n->schedule->manager.SetIpsToScan(ips_to_scan);
             n->schedule->manager.AddNode(own_device);
-            n->schedule->AddOrdinaryTask(new Pinger(*n->schedule, new PingerStatistic(n->progress)));
+            n->schedule->AddOrdinaryTask(new UsrPinger(*n->schedule, 
+                new PingerStatistic(n->progress)));
             n->schedule->AddOrdinaryTask(new Arper(*n->schedule));
             n->schedule->AddOrdinaryTask(new FindGate(*n->schedule));
             n->schedule->WakeUp();
@@ -277,10 +316,13 @@ void clbk_nodes_brws(Fl_Widget *w, void *data)
         n->out_name->value(node->name.c_str());
         n->out_type->value(node->type.c_str());
         n->updatePortsBrowser(node->ipv4_address);
-        if(node->type != "Own host" && node->is_active)
+        if(node->type != "Own host" && node->is_active){
             n->btn_ports_scan->activate();
-        else 
+            n->btn_stop_ports_scan->activate();
+        }else{
             n->btn_ports_scan->deactivate();
+            n->btn_stop_ports_scan->deactivate();
+        }
     }
 }
 
@@ -300,9 +342,15 @@ void clbk_port_scan(Fl_Widget* w, void *data)
     std::string dest_ip = n->out_ip->value();
     std::string src_ip = n->out_own_ip->value();
     if(!dest_ip.empty() && n->schedule->manager.GetNodeByIp(dest_ip)->is_active){
-        n->schedule->AddUrgentTask(new PortScanner(*n->schedule, 
-          get_ports(n->brws_ports), dest_ip, 
-            new PortScannerStatistic(n->ports_scan_progress)));
+        std::vector<std::string> aim = {dest_ip};
+        ScanPortsIfAvailable* scanner = new ScanPortsIfAvailable(
+            new PortScanner(*n->schedule, get_ports(n->brws_ports), dest_ip, 
+            new PortScannerStatistic(n->ports_scan_progress)), 
+            &n->schedule->manager);
+
+        n->schedule->AddOrdinaryTask(new AvailabilityPinger(*n->schedule, aim));
+        n->schedule->AddOrdinaryTask(new AvailabilityUpdate(scanner));
+        n->schedule->AddUrgentTask(scanner);
         n->schedule->AddUrgentTask(new UpdatePorts(n, dest_ip));
         n->schedule->WakeUp();
     } else {

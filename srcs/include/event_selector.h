@@ -4,6 +4,7 @@
 #include <sys/poll.h>
 #include <vector>
 #include "event.h"
+
 struct poll_arr{
     enum{start_size = 16, empty = -1};
     pollfd* fds;
@@ -16,7 +17,7 @@ struct poll_arr{
     ~poll_arr(){delete[] fds;}
 };
 
-class EventSelector{
+class EventSelector final{
 public:
     EventSelector() : timeout(-1), end_selecting(false){}
     void AddEvent(IEvent* e);
@@ -29,7 +30,6 @@ public:
 private:
     std::vector<IEvent*> events;
     poll_arr polling;
-    //atomic?
     int timeout;
     bool end_selecting;
 };

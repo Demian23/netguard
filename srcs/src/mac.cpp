@@ -20,9 +20,13 @@ std::string get_vendor(const ether_addr &mac)
     std::ifstream in;
     std::string res;
     in.open(vendors_file);
-    while(std::getline(in, res))
-        if(res.substr(0, first_part_size) == octets)
-            break;
+    if(in.good()){
+        while(std::getline(in, res))
+            if(res.substr(0, first_part_size) == octets)
+                break;
+    } else {
+        errors::Msg("Can't open vendors base.");
+    }
     return res;
 }
 

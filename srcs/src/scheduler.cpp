@@ -1,5 +1,6 @@
 #include <unistd.h>
 #include <csignal>
+
 #include "../include/pinger.h"
 #include "../include/arper.h"
 #include "../include/router.h"
@@ -41,11 +42,11 @@ void Scheduler::OnTimeout()
         if(done)
             TakeOffOrdinaryTask();
     }else{
-        if(active_mode && !iternal_schedule.empty()){
-            done = iternal_schedule.front()->Execute();
+        if(active_mode && !internal_schedule.empty()){
+            done = internal_schedule.front()->Execute();
             if(done){
-                delete iternal_schedule.front();
-                iternal_schedule.pop();
+                delete internal_schedule.front();
+                internal_schedule.pop();
             } 
         }
     }
@@ -54,7 +55,7 @@ void Scheduler::OnTimeout()
 void Scheduler::OnAnyEvent()
 {
     bool done = false;
-    if(urgent_schedule.empty() && schedule.empty() && iternal_schedule.empty()){
+    if(urgent_schedule.empty() && schedule.empty() && internal_schedule.empty()){
         if(active_mode)
             SetIternalQueue();
         else
@@ -81,7 +82,10 @@ Scheduler::~Scheduler()
         delete urgent_schedule.front();
         urgent_schedule.pop();
     }
-    close(2);
+    while(!internal_schedule.empty()){
+        delete internal_schedule.front();
+        internal_schedule.pop();
+    }
 }
 
 void Scheduler::AddToSelector(IEvent *e){selector.AddEvent(e);}
@@ -92,16 +96,16 @@ void Scheduler::TurnOnActiveMode(){WakeUp();active_mode = true;SetIternalQueue()
 void Scheduler::TurnOffActiveMode()
 {
     active_mode = false; 
-    while(!iternal_schedule.empty()){
-        delete iternal_schedule.front();
-        iternal_schedule.pop();
+    while(!internal_schedule.empty()){
+        delete internal_schedule.front();
+        internal_schedule.pop();
     }
 }
 
 void Scheduler::SetIternalQueue()
 {
-    iternal_schedule.push(new Pinger(*this, 0, Pinger::Slow));
-    iternal_schedule.push(new Arper(*this));
-    iternal_schedule.push(new FindGate(*this));
-    //iternal_schedule.push(new NodesAvailabilityChecker(*this, manager.GetActiveIps()));
+    internal_schedule.push(new InternalPinger(*this));
+    internal_schedule.push(new Arper(*this));
+    internal_schedule.push(new FindGate(*this));
+    internal_schedule.push(new AvailabilityPinger(*this, manager.GetActiveIps()));
 }

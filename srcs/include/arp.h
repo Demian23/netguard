@@ -2,7 +2,7 @@
 #define ARP_DEF
 
 #include <netinet/in.h>
-#include <net/ethernet.h>
+#include <netinet/if_ether.h>
 #include <unordered_map>
 
 namespace ARP{

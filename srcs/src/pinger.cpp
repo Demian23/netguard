@@ -1,8 +1,11 @@
+#include <iterator>
+#include <set>
+
 #include "../include/pinger.h"
 #include "../include/errors.h"
 #include "../include/host_addr.h"
 #include "../include/raw_packets.h"
-#include <iterator>
+#include "../include/ip.h"
 
 class RecvEcho: public IEvent{
 private:
@@ -50,64 +53,14 @@ int RecvEcho::GetDescriptor() const{return fd;}
 void RecvEcho::OnError(){errors::SysRet("ERROR: error while receiving echo reply");end = true;}
 short RecvEcho::ListeningEvents() const {return Read + Error;}
 
-Pinger::Pinger(Scheduler& m, Statistic* stat, Mode mode)
-    : master(m), statistic(stat), ips_set(master.manager.GetIpSet()), reciver(0), send_in_time(0)
+Pinger::Pinger(Scheduler& m)
+    : master(m), ips(m.manager.GetIpsToScan()), ip_pos(0)
 {
-    it = ips_set.begin();
-    if(mode == Slow)
-        send_in_time = 1;
-    else{
-        send_in_time = ips_set.size() / 32 + 1;  
-        if(send_in_time > 0xFF)
-            send_in_time = 0xFF;
-    }
-    send_icmp_sd = new int[send_in_time];
+    raw_packets::make_raw_socket(send_sd, IPPROTO_ICMP);
+    reciver = new RecvEcho();
 }
 
-Pinger::~Pinger()
-{
-    if(statistic)delete statistic;
-    delete[] send_icmp_sd;
-}
-
-bool Pinger::Execute()
-{
-    bool result = false;
-    if(master.manager.IsFullSanStop()){
-        it = ips_set.end();
-        master.manager.StoppedFullScan();
-    }
-    if(reciver == 0){
-        reciver = new RecvEcho();
-        master.AddToSelector(reciver);
-    } else {
-        bool is_send = SendEcho();
-        if(statistic)
-            statistic->RecordStatistic(this);
-        if(!is_send){
-            UpdateDevices();
-            result = true;
-        }
-    }
-    return result;
-}
-
-bool Pinger::SendEcho()
-{
-    bool res = false;
-    for(int i = 0; it != ips_set.end() && i < send_in_time; it++, i++){
-        if(!raw_packets::make_raw_socket(send_icmp_sd[i], IPPROTO_ICMP))
-            errors::Sys("ICMP socket not created.");
-        sockaddr_in dest_addr = host_addr::set_addr((*it).c_str(), AF_INET);
-        raw_packets::send_echo(send_icmp_sd[i], raw_packets::get_id(), 0, 
-            &dest_addr, sizeof(dest_addr));
-        res = true;
-        close(send_icmp_sd[i]);
-    }
-    return res;
-}
-
-void Pinger::UpdateDevices()
+bool Pinger::UpdateDevices()
 {
     const std::set<std::string>& ip_set = reciver->GetIps();
     std::set<std::string>::const_iterator ip_set_it = ip_set.begin();
@@ -124,52 +77,87 @@ void Pinger::UpdateDevices()
         }
     }
     reciver->SetEnd();
+    return true;
 }
 
-int Pinger::GetCurrentCount() const
+Pinger::~Pinger()
 {
-    return std::distance(ips_set.begin(), it);
+    close(send_sd);
 }
 
-NodesAvailabilityChecker::NodesAvailabilityChecker(Scheduler& m, 
-    std::vector<std::string> ips_to_check) : master(m), check_ips(ips_to_check)
+bool Pinger::SendOneEcho()
 {
-    raw_packets::make_raw_socket(send_sd, IPPROTO_ICMP);  
-    send_in_time = 1;
-    it = check_ips.begin();
-    reciver = new RecvEcho;
+    sockaddr_in dest_addr = host_addr::set_addr((ips[ip_pos]).c_str(), AF_INET);
+    raw_packets::send_echo(send_sd, raw_packets::get_id(), 0, 
+        &dest_addr, sizeof(dest_addr));
+    return true;
 }
 
-bool NodesAvailabilityChecker::Execute()
+UsrPinger::UsrPinger(Scheduler& m, Statistic* stat)
+    : Pinger(m), statistic(stat)
+{
+    send_in_time = ips.size() / 32 + 1;
+    if(send_in_time > 0xFF)
+        send_in_time = 0xFF;
+}
+
+bool UsrPinger::Execute()
 {
     bool result = false;
-    if(it == check_ips.begin()){
-        master.AddToSelector(reciver);
-    }
-    if(it != check_ips.end()){
-        for(int i = 0; i < send_in_time && it != check_ips.end(); i++, it++){
-            sockaddr_in dest_addr = host_addr::set_addr((*it).c_str(), AF_INET);
-            raw_packets::send_echo(send_sd, raw_packets::get_id(), 0, 
-                &dest_addr, sizeof(dest_addr));
-        }
+    if(master.manager.IsFullSanStop()){
+        result = UpdateDevices(); 
+        master.manager.StoppedFullScan();
     } else {
-        UpdateActiveDevices();
-        master.manager.AlarmInactiveNodes();
-        reciver->SetEnd();
-        close(send_sd);
-        result = true;
+        if(ip_pos == 0)
+            master.AddToSelector(reciver);
+        bool is_send;
+        for(int i = 0; ip_pos < ips.size() && i < send_in_time; ip_pos++, i++){
+            is_send = SendOneEcho();
+        }
+        statistic->RecordStatistic(this);
+        if(!is_send){
+            result = UpdateDevices();
+        }
     }
     return result;
 }
 
-void NodesAvailabilityChecker::UpdateActiveDevices()
+UsrPinger::~UsrPinger(){delete statistic;}
+
+bool InternalPinger::Execute()
+{
+    bool result = false;
+    if(ip_pos == 0)
+        master.AddToSelector(reciver);
+    if(ip_pos < ips.size()){
+        SendOneEcho();
+        ip_pos++;
+    } else {
+        result = UpdateDevices();
+    }
+    return result;
+}
+
+bool AvailabilityPinger::UpdateDevices()
 {
     std::set<std::string> recived_set = reciver->GetIps();
-    for(const std::string& ip : check_ips){
+    for(const std::string& ip : ips){
        if(recived_set.find(ip) == recived_set.end()){
             NetNode*temp = master.manager.GetNodeByIp(ip);
-            if(temp) temp->is_active = false;
+            if(temp){ 
+                temp->is_active = false;
+                errors::Msg("ALARM: %s is currently unavailable", 
+                    temp->ipv4_address.c_str());
+            }
        } 
     }
     master.manager.Change();
+    reciver->SetEnd();
+    return true;
+}
+
+AvailabilityPinger::AvailabilityPinger(Scheduler& m, std::vector<std::string> ips_to_check)
+    : InternalPinger(m)
+{
+    ips = ips_to_check;
 }

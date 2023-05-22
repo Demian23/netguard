@@ -1,8 +1,8 @@
 #ifndef NODES_MANAGER_DEF
 #define NODES_MANAGER_DEF
+
 #include <string>
 #include <unordered_map> 
-#include <set>
 #include <vector>
 
 enum PortCondition{Unset, Open, Closed, Filtered};
@@ -21,20 +21,17 @@ struct NetNode{
     NetNode();
 };
 
-class NodesManager{
+class NodesManager final{
 public:
-    NodesManager() : changed(false), user_full_scan_stop(false), user_port_scan_stop(false){}
-    const std::set<std::string>& GetIpSet()const;
+    NodesManager();
+    const std::vector<std::string>& GetIpsToScan()const;
     void AddNode(const NetNode& node);
     void AddPorts(const std::string& ip, const ports_storage& new_ports, ports_storage::iterator& end_it);
     void SetInterface(const std::string& a_interface);
-    void SetIpSet(const std::set<std::string>& ips);
+    void SetIpsToScan(const std::vector<std::string>& ips);
     const std::string& GetInterface() const;
     const NetNode& GetOwnNode()const;
-    void InitServices();
-    bool IsChanged()const{return changed;}
-    void Updated(){changed = false;}
-    void Change(){changed = true;}
+    inline bool IsChanged()const{return changed;}
     std::vector<uint16_t> GetSortedPorts(const std::string& ip);
     std::vector<std::string> GetSortedIps();
     std::vector<std::string> GetIps()const;
@@ -43,22 +40,24 @@ public:
     const char*const GetPortCond(const std::string& ip, uint16_t port);
     std::string GetService(uint16_t port);
     std::string GetProtocol(uint16_t port);
-    void SetAllNodesInactive();
-    void AlarmInactiveNodes();
-    void UsrStopFullScan(){user_full_scan_stop = true;}
+
+    inline void Updated(){changed = false;}
+    inline void Change(){changed = true;}
+    inline void UsrStopFullScan(){user_full_scan_stop = true;}
     inline bool IsFullSanStop(){return user_full_scan_stop;}
     inline void StoppedFullScan(){user_full_scan_stop = false;}
-    void UsrStopPortScan(){user_port_scan_stop = true;}
+    inline void UsrStopPortScan(){user_port_scan_stop = true;}
     inline bool IsPortScanStop(){return user_port_scan_stop;} 
     inline void StoppedPortScan(){user_port_scan_stop = false;}
 private:
     std::unordered_map<std::string, NetNode> nodes_map;
     std::unordered_map<uint16_t, std::pair<std::string, std::string>> services;
-    std::set<std::string> ip_set;
+    std::vector<std::string> ips_to_scan;
     std::string interface;
     bool changed;
     bool user_full_scan_stop;
     bool user_port_scan_stop;
+    void InitServices();
 };
 
 #endif // !NODES_MANAGER_DEF

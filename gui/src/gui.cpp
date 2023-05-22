@@ -136,6 +136,7 @@ NetGuardUserInterface::NetGuardUserInterface(Scheduler* a_sched) : schedule(a_sc
         { btn_active_mode = new Fl_Light_Button(55, 425, 160, 40, "active mode");
           btn_active_mode->labelsize(18);
           btn_active_mode->align(Fl_Align(FL_ALIGN_CENTER|FL_ALIGN_INSIDE));
+          btn_active_mode->deactivate();
           btn_active_mode->callback(clbk_btn_active_mode, this);
         } // Fl_Light_Button* btn_active_mode
         { log_display = new Fl_Text_Display(500, 70, 500, 650, "Logs");
@@ -166,10 +167,12 @@ void NetGuardUserInterface::updateNodesBrowser()
     std::vector<std::string> sorted_ips = schedule->manager.GetSortedIps();
     for(auto& ip : sorted_ips){
         NetNode* node = schedule->manager.GetNodeByIp(ip);
-        if(node && node->is_active)
-            brws_nodes->insert(i, (ip + " (on)").c_str(), (void*)node);
-        else
-            brws_nodes->insert(i, (ip + " (off)").c_str(), (void*)node);
+        if(node){
+            if(node->is_active)    
+                brws_nodes->insert(i, ip.c_str(), (void*)node);
+            else
+                brws_nodes->insert(i, (ip + " (off)").c_str(), (void*)node);
+        }
 
     }
 }

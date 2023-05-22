@@ -2,22 +2,19 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <fcntl.h>
-#include <stdio.h>
 #include <net/bpf.h>
 #include <netinet/if_ether.h>
 #include <arpa/inet.h>
 #include <net/if.h>
-#include <string.h>
 
 #include "../include/arp.h"
 #include "../include/errors.h"
 
 namespace ARP{
-enum{arp_timeout = 50000};
 
 void set_timeout(int fd)
 {
-    timeval timeout = {.tv_sec = 0, .tv_usec = arp_timeout};
+    timeval timeout = {.tv_sec = 0, .tv_usec = 50000};
     ioctl(fd, BIOCSRTIMEOUT, &timeout);
 }
 

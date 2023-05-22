@@ -5,7 +5,6 @@
 #include "../include/nodes_manager.h"
 #include "event.h"
 #include <queue>
-#include <set>
 #include <string>
 #include <pthread.h>
 
@@ -54,7 +53,7 @@ private:
     EventSelector& selector;
     std::queue<Task*> schedule;
     std::queue<UrgentTask*> urgent_schedule;
-    std::queue<Task*> iternal_schedule;
+    std::queue<Task*> internal_schedule;
     pthread_t thread_id;
     bool is_end;
     bool active_mode;
