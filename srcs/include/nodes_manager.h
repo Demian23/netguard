@@ -21,6 +21,7 @@ struct NetNode{
     NetNode();
 };
 
+
 class NodesManager final{
 public:
     NodesManager();
@@ -29,6 +30,7 @@ public:
     void AddPorts(const std::string& ip, const ports_storage& new_ports, ports_storage::iterator& end_it);
     void SetInterface(const std::string& a_interface);
     void SetIpsToScan(const std::vector<std::string>& ips);
+    void SetOwnNode(const std::string& ip, const std::string& mac);
     const std::string& GetInterface() const;
     const NetNode& GetOwnNode()const;
     inline bool IsChanged()const{return changed;}

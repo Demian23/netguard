@@ -3,9 +3,20 @@
 #include "gui.h"
 #include "gui_engine.h"
 #include "../../srcs/include/ip.h"
+#include "../../srcs/include/errors.h"
 #include "../../srcs/include/port_scanner.h"
 #include <cstdio>
 #include <string>
+
+void update_logs(int fd, void* data)
+{
+    NetGuardUserInterface* interface= reinterpret_cast<NetGuardUserInterface*>(data);
+    char buffer[1024] = {};
+    int size = read(fd, buffer, 1024);
+    if(size > 0){
+        interface->log_buffer->append(buffer);
+    }
+}
 
 NetGuardUserInterface::NetGuardUserInterface(Scheduler* a_sched) : schedule(a_sched) {
   { main_window = new Fl_Double_Window(1045, 791, "NetGuard");
@@ -142,6 +153,7 @@ NetGuardUserInterface::NetGuardUserInterface(Scheduler* a_sched) : schedule(a_sc
         { log_display = new Fl_Text_Display(500, 70, 500, 650, "Logs");
           log_display->labelsize(18);
           log_display->textsize(18);
+          log_display->wrap_mode(log_display->WRAP_AT_BOUNDS, 0);
           log_buffer = new Fl_Text_Buffer;
           log_display->buffer(log_buffer);
         } // Fl_Text_Display* log_display
@@ -162,6 +174,7 @@ void NetGuardUserInterface::show(){main_window->show();}
 
 void NetGuardUserInterface::updateNodesBrowser()
 {
+    Fl::lock();
     brws_nodes->clear();
     int i = 0;
     std::vector<std::string> sorted_ips = schedule->manager.GetSortedIps();
@@ -173,12 +186,20 @@ void NetGuardUserInterface::updateNodesBrowser()
             else
                 brws_nodes->insert(i, (ip + " (off)").c_str(), (void*)node);
         }
-
     }
+    Fl::unlock();
+}
+
+void NetGuardUserInterface::addLogFile()
+{
+    int fd = open("netguard.log", O_RDONLY);
+    Fl::add_fd(fd, update_logs, this);
 }
 
 void NetGuardUserInterface::updatePortsBrowser(const std::string& destination)
 {
+    Fl::lock();
     std::vector<uint16_t> ports_sorted = schedule->manager.GetSortedPorts(destination);
     table->UpdateTable(destination, ports_sorted);
+    Fl::unlock();
 }

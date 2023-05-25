@@ -223,38 +223,25 @@ bool get_exceed_node(int fd, char* ptr, ssize_t len, int id, in_addr& res_addr)
     return res;
 }
 
+bool send_irc(int& resfd, int& id)
+{
+    static const char*const dest_str = "224.0.0.2";
+    int ret;
+    sockaddr_in dest = {.sin_family = AF_INET};
+    id = id == -1 ? get_id() : id;
+    inet_aton(dest_str, &dest.sin_addr); 
+    icmp request;
+    request.icmp_type = ICMP_ROUTERSOLICIT;
+    request.icmp_code = 0;
+    request.icmp_id = id;
+    request.icmp_seq = 0;
+    request.icmp_cksum = 0;
+    request.icmp_cksum = calc_checksum(
+        reinterpret_cast<uint16_t *>(&request), sizeof(request));
+    ret = sendto(resfd, reinterpret_cast<void *>(&request), sizeof(request),0, 
+        reinterpret_cast<sockaddr *>(&dest), sizeof(sockaddr_in));
+    return ret != -1; 
 }
 
-/*
-bool bind_socket_to_interface(int sd, const char* interface)
-{
-    ifreq ifr;
-    memset(&ifr, 0, sizeof(ifr));
-    strncpy(ifr.ifr_name, interface, IFNAMSIZ);
-    bool result = true;
-    if(setsockopt(sd, SOL_SOCKET, IP_BOUND_IF, &ifr, sizeof(ifr) == -1)){
-        errors::SysRet("Fail bind to interface");
-        result = false;
-    }
-    return result;
 }
 
-bool get_syn_answer(char* packet, int len, sockaddr_in* from)
-{
-    ip* ip_hdr = reinterpret_cast<ip*>(packet);
-    uint8_t offset = ip_hdr->ip_hl * 4;
-    tcphdr* tcp_hdr = reinterpret_cast<tcphdr*>(packet + offset);
-    bool res = false;
-    if(ip_hdr->ip_p == IPPROTO_TCP){
-        if(tcp_hdr->th_flags | TH_ACK && tcp_hdr->th_flags | TH_SYN){
-           res = true; 
-           from->sin_addr = ip_hdr->ip_src;
-           from->sin_port = tcp_hdr->th_sport;           
-        } else if(tcp_hdr->th_flags | TH_RST){
-           from->sin_addr = ip_hdr->ip_src;
-           from->sin_port = tcp_hdr->th_sport;
-        }
-    }
-    return res;
-}
-*/

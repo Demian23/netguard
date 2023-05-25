@@ -13,17 +13,16 @@ class GuiUpdater final : public IEvent{
     static bool created;
     NetGuardUserInterface& interface;
     NodesManager& manager;
-    int fd;
     bool end;
     GuiUpdater(NetGuardUserInterface& n, NodesManager& m) 
-        : interface(n), manager(m), end(false){fd = open("netguard.log", O_RDONLY);}
+        : interface(n), manager(m), end(false){}
 public:
     void OnError()override{end = true;}
     bool End()const override{return end;}
-    int GetDescriptor() const override{return fd;}
+    int GetDescriptor() const override{return 1;}
     short ListeningEvents()const override{return Any;} 
     void OnAnyEvent()override;
-    virtual ~GuiUpdater(){close(fd);}
+    virtual ~GuiUpdater(){}
     static GuiUpdater* Make(NetGuardUserInterface& n);
 };
 
@@ -41,10 +40,6 @@ void GuiUpdater::OnAnyEvent()
         interface.updateNodesBrowser();
         manager.Updated();
     }
-    char buffer[1024] = {};
-    int size = read(fd, buffer, 1024);
-    if(size > 0)
-        interface.log_buffer->append(buffer);
 }
 
 
@@ -88,7 +83,7 @@ public:
     PingerStatistic(Fl_Progress *progress):progress_bar(progress){}
     void RecordStatistic(Task *task) override;
     void ShowMistake(std::string mistake_msg)override{fl_alert("%s", mistake_msg.c_str());}
-    virtual ~PingerStatistic(){progress_bar->value(progress_bar->minimum());}
+    virtual ~PingerStatistic(){Fl::lock();progress_bar->value(progress_bar->minimum()); Fl::unlock();}
 private:
     Fl_Progress* progress_bar;
 };
@@ -97,26 +92,32 @@ void PingerStatistic::RecordStatistic(Task *task)
 {
     UsrPinger* p = static_cast<UsrPinger*>(task);
     float percent = (float)p->GetCurrentCount() * 100 / p->GetIpsSize();
+    Fl::lock();
     progress_bar->value(percent);
-    Fl::awake();
+    Fl::unlock();
 }
 
 class PortScannerStatistic : public Statistic{
 public:
-    PortScannerStatistic(Fl_Progress* port_progress) : port_progress_bar(port_progress){}
+    PortScannerStatistic(Fl_Progress* port_progress) : port_progress_bar(port_progress), lbl_changed(false){}
     void RecordStatistic(Task* task)override;
-    virtual ~PortScannerStatistic(){port_progress_bar->value(port_progress_bar->minimum()); port_progress_bar->label("scanning");}
+    virtual ~PortScannerStatistic(){Fl::lock();port_progress_bar->value(port_progress_bar->minimum()); port_progress_bar->label("scanning"); Fl::unlock();}
 private:
     Fl_Progress* port_progress_bar;
+    bool lbl_changed;
 };
 
 void PortScannerStatistic::RecordStatistic(Task *task)
 {
     PortScanner* p = static_cast<PortScanner*>(task);
     float percent = (float)p->GetCurrentCount() * 100 / p->GetPortsSize();
+    Fl::lock();
     port_progress_bar->value(percent);
-    port_progress_bar->copy_label((p->GetAim() + " scanning").c_str());
-    Fl::awake();
+    if(!lbl_changed){
+        port_progress_bar->copy_label((p->GetAim() + " scanning").c_str());
+        lbl_changed = true;
+    }
+    Fl::unlock();
 }
 
 class UpdatePorts : public UrgentTask{
@@ -247,42 +248,41 @@ void clbk_choice_interface(Fl_Widget* w, void* data)
 void clbk_full_scan(Fl_Widget *w, void *data)
 {
     NetGuardUserInterface* n = reinterpret_cast<NetGuardUserInterface*>(data); 
-    if(n->choice_interface->text()){
-        n->schedule->manager.SetInterface(n->choice_interface->text());
-        std::string first_ip_string = n->first_ip->value();
-        std::string last_ip_string = n->last_ip->value();
-        if(IP::is_valid_ip_string(first_ip_string) && IP::is_valid_ip_string(last_ip_string) 
-        && IP::check_ip_range(n->out_net->value(), n->out_own_mask->value(), first_ip_string, last_ip_string)){
-            std::vector<std::string> ips_to_scan= 
-                IP::all_ipv4_from_range(first_ip_string, last_ip_string);
-            IEvent* updater = GuiUpdater::Make(*n);
-            n->btn_active_mode->activate();
-            if(updater != 0)
-                n->schedule->AddToSelector(updater);
-            NetNode own_device;
-            own_device.ipv4_address = n->out_own_ip->value();
-            own_device.type = "Own host";
-            own_device.name = host_addr::get_own_name();
-            own_device.mac_address = n->out_own_mac->value();
-            own_device.is_active = true;
-            ether_addr* temp = ether_aton(own_device.mac_address.c_str());
-            own_device.vendor = MAC::get_vendor(*temp);
-            std::vector<std::string>::iterator new_end = std::remove(ips_to_scan.begin(), ips_to_scan.end(), own_device.ipv4_address);
-            ips_to_scan.erase(new_end, ips_to_scan.end());
-            n->schedule->manager.SetIpsToScan(ips_to_scan);
-            n->schedule->manager.AddNode(own_device);
-            n->schedule->AddOrdinaryTask(new UsrPinger(*n->schedule, 
-                new PingerStatistic(n->progress)));
-            n->schedule->AddOrdinaryTask(new Arper(*n->schedule));
-            n->schedule->AddOrdinaryTask(new FindGate(*n->schedule));
-            n->schedule->WakeUp();
-        }else{
-            n->first_ip->value(IP::first_ip(n->out_net->value()).c_str());
-            n->last_ip->value(IP::last_ip(n->out_net->value(), n->out_own_mask->value()).c_str());
-            fl_alert("Wrong ip range!");
+    if(host_addr::is_privileged()){
+        if(n->choice_interface->text()){
+            n->schedule->manager.SetInterface(n->choice_interface->text());
+            std::string first_ip_string = n->first_ip->value();
+            std::string last_ip_string = n->last_ip->value();
+            if(IP::is_valid_ip_string(first_ip_string) 
+            && IP::is_valid_ip_string(last_ip_string) 
+            && IP::check_ip_range(n->out_net->value(), 
+            n->out_own_mask->value(), first_ip_string, last_ip_string)){
+                IEvent* updater = GuiUpdater::Make(*n);
+                if(updater != 0)
+                    n->schedule->AddToSelector(updater);
+                n->schedule->manager.SetOwnNode(n->out_own_ip->value(), 
+                    n->out_own_mac->value());
+                std::vector<std::string> ips_to_scan= 
+                    IP::all_ipv4_from_range(first_ip_string, last_ip_string);
+                n->schedule->manager.SetIpsToScan(ips_to_scan);
+                n->schedule->AddOrdinaryTask(new UsrPinger(*n->schedule, 
+                    new PingerStatistic(n->progress)));
+                n->schedule->AddOrdinaryTask(new Arper(*n->schedule));
+                n->schedule->AddOrdinaryTask(new FindGate(*n->schedule));
+                n->schedule->AddOrdinaryTask(new FindRouters(*n->schedule));
+                n->schedule->WakeUp();
+                n->btn_active_mode->activate();
+            }else{
+                n->first_ip->value(IP::first_ip(n->out_net->value()).c_str());
+                n->last_ip->value(IP::last_ip(n->out_net->value(), 
+                    n->out_own_mask->value()).c_str());
+                fl_alert("Wrong ip range!");
+            }
+        } else {
+            fl_alert("Choose interface!");
         }
     } else {
-        fl_alert("Choose interface!");
+        fl_alert("You must run with root!");
     }
 }
 

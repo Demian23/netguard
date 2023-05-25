@@ -8,12 +8,12 @@
 struct poll_arr{
     enum{start_size = 16, empty = -1};
     pollfd* fds;
-    nfds_t current_size;
     int real_size;
     poll_arr();
     int add_fd(int fd, short events);
     int delete_fd(int fd);
     void expand();
+    nfds_t get_current_size();
     ~poll_arr(){delete[] fds;}
 };
 

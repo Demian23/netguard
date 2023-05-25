@@ -26,13 +26,14 @@ void EventSelector::StartSelecting()
     end_selecting = false;
     int ret = 0;
     do{
-        ret = poll(polling.fds, polling.current_size, timeout); 
+        nfds_t current_size = polling.get_current_size(); 
+        ret = poll(polling.fds, current_size, timeout); 
         if(ret < 0){
             if(errno == EINTR || errno == EAGAIN)
                 continue;
             else break;
         }
-        for(int i = 0; i < polling.current_size; i++){
+        for(int i = 0; i < current_size; i++){
             if(i < events.size() && events[i]){
                 if(polling.fds[i].revents & POLLERR)
                     events[i]->OnError();
@@ -62,8 +63,19 @@ short EventsToPollEvents(short events)
     return res;
 }
 
+nfds_t poll_arr::get_current_size()
+{
+    nfds_t res = 0;
+    if(fds != 0)
+        for(int i = 0; i < real_size; i++){
+            if(fds[i].fd != empty)
+                res = i + 1;
+        }
+    return res;
+}
+
 poll_arr::poll_arr() 
-    : fds(0), current_size(0), real_size(start_size)
+    : fds(0), real_size(start_size)
 {
     expand();
 }
@@ -77,7 +89,6 @@ int poll_arr::add_fd(int fd, short events)
     if(i == real_size){
         expand();
     }
-    current_size++;
     fds[i].fd = fd;
     fds[i].events = EventsToPollEvents(events);
     fds[i].revents = 0;
@@ -89,7 +100,8 @@ void poll_arr::expand()
     real_size *= 2;
     pollfd* new_fds = new pollfd[real_size];
     int i = 0;
-    for(; i < current_size; i++){
+    nfds_t size = get_current_size();
+    for(; i < size; i++){
         new_fds[i] = fds[i];
     }
     for(; i < real_size; i++){
@@ -107,7 +119,5 @@ int poll_arr::delete_fd(int fd)
             fds[i] = {empty, 0, 0};
             break;
        }
-   if(i == current_size - 1)
-       current_size--;
    return i;
 }

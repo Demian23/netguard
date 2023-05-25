@@ -2,6 +2,7 @@
 #define ERRORS_DEF
 #include <errno.h>
 namespace errors{
+    int GetLogFd();
     void Quit(const char *fmt, ...);
     void Msg(const char *fmt, ...);
     void Dump(const char *fmt, ...);

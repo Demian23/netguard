@@ -2,6 +2,8 @@
 
 #include "../include/errors.h"
 #include "../include/ip.h"
+#include "../include/mac.h"
+#include "../include/host_addr.h"
 #include "../include/nodes_manager.h"
 
 const char* ports_conditions[] = {"Unset", "Open", "Closed", "Filtered"};
@@ -40,7 +42,11 @@ void NodesManager::SetInterface(const std::string &a_interface)
 
 void NodesManager::SetIpsToScan(const std::vector<std::string> &ips)
 {
+    const NetNode& self = GetOwnNode();
     ips_to_scan = ips;
+    std::vector<std::string>::iterator new_end = 
+        std::remove(ips_to_scan.begin(), ips_to_scan.end(), self.ipv4_address);
+    ips_to_scan.erase(new_end, ips_to_scan.end());
 }
 
 const std::string& NodesManager::GetInterface() const
@@ -160,4 +166,18 @@ std::vector<std::string> NodesManager::GetActiveIps()const
         if(node.second.is_active)
             res.push_back(node.first);
     return res;
+}
+
+
+void NodesManager::SetOwnNode(const std::string &ip, const std::string &mac)
+{
+    NetNode own_device;
+    own_device.ipv4_address = ip;
+    own_device.type = "Own host";
+    own_device.name = host_addr::get_own_name();
+    own_device.mac_address = mac; 
+    own_device.is_active = true;
+    ether_addr* temp = ether_aton(own_device.mac_address.c_str());
+    own_device.vendor = MAC::get_vendor(*temp);
+    AddNode(own_device); 
 }

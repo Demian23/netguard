@@ -27,6 +27,8 @@ bool make_manual_socket(int& sd, int type);
 bool send_tcp_flag(int sockfd, sockaddr_in* src, sockaddr_in* dest,
     uint8_t flags, char* packet_buffer);
 
+bool send_irc(int& resfd, int& id);
+
 int get_id();
 void send_echo(int sockfd, int id, int seq, 
     sockaddr_in *dest_addr, int addr_len);

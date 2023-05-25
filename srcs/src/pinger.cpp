@@ -146,8 +146,8 @@ bool AvailabilityPinger::UpdateDevices()
             NetNode*temp = master.manager.GetNodeByIp(ip);
             if(temp){ 
                 temp->is_active = false;
-                errors::Msg("ALARM: %s is currently unavailable", 
-                    temp->ipv4_address.c_str());
+                errors::Msg("ALARM: %s(%s) is currently unavailable", 
+                    temp->ipv4_address.c_str(), temp->vendor.c_str());
             }
        } 
     }

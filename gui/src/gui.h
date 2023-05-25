@@ -58,5 +58,6 @@ public:
   void show();
   void updateNodesBrowser();
   void updatePortsBrowser(const std::string& destination);
+  void addLogFile();
 };
 #endif

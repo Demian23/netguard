@@ -10,6 +10,11 @@
 
 namespace host_addr{
 
+bool is_privileged()
+{
+    return 0 == getuid();
+}
+
 std::string get_own_name()
 {
     char buffer[1024]={};

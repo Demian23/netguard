@@ -17,3 +17,11 @@ bool FindGate::Execute()
     return flag;
 }
 
+bool FindRouters::Execute()
+{
+    int sd = -1, id = -1;
+    raw_packets::make_raw_socket(sd, IPPROTO_ICMP);
+    raw_packets::send_irc(sd, id);
+    close(sd);
+    return true;
+}

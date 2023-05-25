@@ -17,6 +17,7 @@ void SetLogFile(const char *filename = 0)
         log_file = fopen(filename, "w"); 
     else log_file = stderr;
 }
+int GetLogFd(){return fileno(log_file);}
 void EndLogging(){fclose(log_file);}
 
 void print_err(FILE* out, bool errno_flag, const char *fmt, va_list ap)

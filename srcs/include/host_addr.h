@@ -15,6 +15,7 @@ namespace host_addr{
     sockaddr_in set_addr(const char *ip, int family);
     std::string get_own_name();
     interface_map get_net_interfaces();
+    bool is_privileged();
 }
 
 #endif
