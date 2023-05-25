@@ -15,6 +15,7 @@ NodesManager::NodesManager()
 {
     InitServices();
 }
+
 void NodesManager::AddNode(const NetNode &node)
 {
     auto it = nodes_map.find(node.ipv4_address);
@@ -25,9 +26,27 @@ void NodesManager::AddNode(const NetNode &node)
     else {
         it->second.is_active = node.is_active; 
         //if(!node.mac_address.empty()) it->second.mac_address = node.mac_address;
-        if(!node.type.empty()) it->second.type = node.type;
         if(!node.name.empty()) it->second.name = node.name;
         //if(!node.vendor.empty()) it->second.vendor = node.vendor;
+    }
+    Change();
+}
+
+void NodesManager::AddGate(const char* ip)
+{
+    auto it = nodes_map.find(ip);
+    if(it == nodes_map.end()){
+        NetNode gate;
+        gate.ipv4_address = ip;
+        sockaddr_in temp; temp.sin_family = AF_INET; temp.sin_addr = IP::str_to_ip(ip);
+        gate.name = IP::get_name(&temp);
+        gate.type = "Gateway";
+        nodes_map.emplace(ip, gate);
+        errors::Msg("ALARM: new gate device %s(%s)",gate.name.c_str(), 
+            gate.ipv4_address.c_str());
+    } else {
+        it->second.type = "Gateway";
+        it->second.is_active = true;
     }
     Change();
 }
@@ -38,6 +57,12 @@ void NodesManager::SetInterface(const std::string &a_interface)
         nodes_map.clear();
         interface = a_interface;
     } 
+}
+
+void NodesManager::SetNetParams(const std::string &net, const std::string &mask)
+{
+    NetParams p(net, mask);
+    params.swap(p);
 }
 
 void NodesManager::SetIpsToScan(const std::vector<std::string> &ips)
@@ -52,6 +77,11 @@ void NodesManager::SetIpsToScan(const std::vector<std::string> &ips)
 const std::string& NodesManager::GetInterface() const
 {
     return interface;
+}
+
+const NetParams& NodesManager::GetNetParams() const 
+{
+    return params;
 }
 
 const NetNode& NodesManager::GetOwnNode()const

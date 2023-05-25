@@ -15,7 +15,7 @@ std::string mac_to_string(const ether_addr &mac)
 std::string get_vendor(const ether_addr &mac)
 {
     char octets[first_part_size + 1] = {};
-    sprintf(octets, "%02X:%02X:%02X", mac.octet[0], 
+    snprintf(octets, first_part_size, "%02X:%02X:%02X", mac.octet[0], 
         mac.octet[1], mac.octet[2]); 
     std::ifstream in;
     std::string res;

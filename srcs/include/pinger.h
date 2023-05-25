@@ -26,8 +26,9 @@ public:
     bool Execute() override;
     virtual ~UsrPinger();
 private:
-    int send_in_time;
     Statistic* statistic;
+    int send_in_time;
+    bool rare_update;
 };
 
 class InternalPinger : public Pinger{

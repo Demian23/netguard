@@ -6,14 +6,7 @@ class FindGate: public Task{
 public:
     FindGate(Scheduler& m):master(m){}
     bool Execute()override;
-private:
-    Scheduler& master;
-};
-
-class FindRouters : public Task{
-public:     
-    FindRouters(Scheduler& m) : master(m){}
-    bool Execute()override;
+    void AddGateNode(const char* ip);
 private:
     Scheduler& master;
 };

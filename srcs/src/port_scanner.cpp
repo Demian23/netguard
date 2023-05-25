@@ -137,8 +137,8 @@ PortScanner::PortScanner(Scheduler& a_master, const ports_storage& a_ports,
     const NetNode& temp = master.manager.GetOwnNode();
     inet_aton(temp.ipv4_address.c_str(), &src.sin_addr); 
     src.sin_port = htons(49000); src.sin_family = AF_INET;
-    if(ports.size() > 1024)
-        scanners_size = (ports.size() / 1024) + 1;
+    if(ports.size() > 2048)
+        scanners_size = (ports.size() / 512) + 1;
     else scanners_size = 5;
 }
 

@@ -4,12 +4,14 @@
 #include <string>
 #include <unordered_map> 
 #include <vector>
+#include <utility>
 
 enum PortCondition{Unset, Open, Closed, Filtered};
 extern const char* ports_conditions[];
 struct NetNode;
 typedef std::unordered_map<uint16_t, PortCondition> ports_storage;
 typedef std::unordered_map<std::string, NetNode> NetMap;
+typedef std::pair<std::string, std::string> NetParams; // net and mask
 struct NetNode{
     std::string ipv4_address;
     std::string mac_address;
@@ -28,10 +30,13 @@ public:
     const std::vector<std::string>& GetIpsToScan()const;
     void AddNode(const NetNode& node);
     void AddPorts(const std::string& ip, const ports_storage& new_ports, ports_storage::iterator& end_it);
+    void AddGate(const char* ip);
     void SetInterface(const std::string& a_interface);
     void SetIpsToScan(const std::vector<std::string>& ips);
+    void SetNetParams(const std::string& net, const std::string& mask);
     void SetOwnNode(const std::string& ip, const std::string& mac);
     const std::string& GetInterface() const;
+    const NetParams& GetNetParams()const;
     const NetNode& GetOwnNode()const;
     inline bool IsChanged()const{return changed;}
     std::vector<uint16_t> GetSortedPorts(const std::string& ip);
@@ -56,6 +61,7 @@ private:
     std::unordered_map<uint16_t, std::pair<std::string, std::string>> services;
     std::vector<std::string> ips_to_scan;
     std::string interface;
+    NetParams params;
     bool changed;
     bool user_full_scan_stop;
     bool user_port_scan_stop;

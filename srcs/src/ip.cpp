@@ -6,6 +6,14 @@
 
 namespace IP{
 
+bool is_ip_in_net(const std::string &net, const std::string &mask, const std::string &ip)
+{
+   uint32_t first_ip_n = ipv4_to_number(first_ip(net));
+   uint32_t last_ip_n = ipv4_to_number(last_ip(net, mask));
+   uint32_t ip_n = ipv4_to_number(ip);
+   return ip_n >= first_ip_n && ip_n <= last_ip_n;
+}
+
 bool is_valid_ip_string(const std::string& ip_string)
 {
     std::stringstream stream(ip_string);

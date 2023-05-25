@@ -1,5 +1,6 @@
 #include "../include/raw_packets.h"
 #include "../include/errors.h"
+#include <sys/socket.h>
 
 namespace raw_packets{
 
@@ -133,8 +134,6 @@ void send_echo(int sockfd, int id, int seq,
     request.icmp_cksum = 0;
     request.icmp_cksum = calc_checksum(
         reinterpret_cast<uint16_t *>(&request), sizeof(request));
-    //here request without time 
-    // assume that it's about ttl
     sendto(sockfd, reinterpret_cast<void *>(&request), sizeof(request),0, 
         reinterpret_cast<sockaddr *>(dest_addr), addr_len);
 }
@@ -185,7 +184,7 @@ bool get_echo(char *ptr, ssize_t len, in_addr& src_ip)
     return res;
 }
 
-bool send_ttl_1(int& resfd, int& id)
+bool send_ttl(int& resfd, int& id, int ttl)
 {
     static const char*const dest_str = "8.8.8.8";
     int ret_val, sockfd;
@@ -193,15 +192,19 @@ bool send_ttl_1(int& resfd, int& id)
     sockaddr_in dest = {.sin_family = AF_INET};
     id = id == -1 ? get_id() : id;
     res = make_raw_socket(sockfd, IPPROTO_ICMP);
+    timeval timeout = {.tv_sec = 1, .tv_usec = 0};
     if(res){
-        int opt = 1;
+        int opt = ttl;
         ret_val = setsockopt(sockfd, IPPROTO_IP, IP_TTL, &opt, sizeof(opt));
         if(ret_val != -1){
-            inet_aton(dest_str, &dest.sin_addr); 
-            send_echo(sockfd, id, 0, &dest, sizeof(dest));
-            resfd = sockfd;
+            ret_val = setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof timeout);
+            if(ret_val != -1){
+                inet_aton(dest_str, &dest.sin_addr); 
+                send_echo(sockfd, id, 0, &dest, sizeof(dest));
+                resfd = sockfd;
+            } else {errors::SysRet("send_ttl, timeout");}
         } else {
-            errors::Sys("find gateway");
+            errors::Sys("send_ttl");
         }
     }
     return res; 
@@ -222,26 +225,5 @@ bool get_exceed_node(int fd, char* ptr, ssize_t len, int id, in_addr& res_addr)
     } 
     return res;
 }
-
-bool send_irc(int& resfd, int& id)
-{
-    static const char*const dest_str = "224.0.0.2";
-    int ret;
-    sockaddr_in dest = {.sin_family = AF_INET};
-    id = id == -1 ? get_id() : id;
-    inet_aton(dest_str, &dest.sin_addr); 
-    icmp request;
-    request.icmp_type = ICMP_ROUTERSOLICIT;
-    request.icmp_code = 0;
-    request.icmp_id = id;
-    request.icmp_seq = 0;
-    request.icmp_cksum = 0;
-    request.icmp_cksum = calc_checksum(
-        reinterpret_cast<uint16_t *>(&request), sizeof(request));
-    ret = sendto(resfd, reinterpret_cast<void *>(&request), sizeof(request),0, 
-        reinterpret_cast<sockaddr *>(&dest), sizeof(sockaddr_in));
-    return ret != -1; 
-}
-
 }
 

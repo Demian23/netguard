@@ -19,6 +19,7 @@ int main()
     pthread_create(&scan_thread, 0, scan_thr_f, &selector); 
     schedule->SetThreadId(scan_thread);
     NetGuardUserInterface n(schedule);
+    n.addLogFile();
     n.show();
     Fl::run();
     pthread_join(scan_thread, 0);

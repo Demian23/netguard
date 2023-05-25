@@ -116,7 +116,7 @@ bool set_bpf_arp(int &fd, int &buflen, const char *interface)
     buflen = 1;
     int dlt;
     for(int i = 0; i < 255; i++){
-        sprintf(dev, "/dev/bpf%d", i);
+        snprintf(dev, 32, "/dev/bpf%d", i);
         fd = open(dev, O_RDWR); 
         if(fd > 0)
             break;

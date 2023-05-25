@@ -42,7 +42,6 @@ void GuiUpdater::OnAnyEvent()
     }
 }
 
-
 class ScanPortsIfAvailable : public UrgentTask{
 public:
     ScanPortsIfAvailable(PortScanner* scan, NodesManager* m) 
@@ -62,7 +61,6 @@ public:
     virtual ~AvailabilityUpdate(){task->ConditionDone();}
 private:
     ScanPortsIfAvailable* task;
-    
 };
 
 bool ScanPortsIfAvailable::UrgentExecute()
@@ -234,7 +232,8 @@ void clbk_choice_interface(Fl_Widget* w, void* data)
     if(it != interfaces.end()){
         n->out_own_mac->value(it->second.mac.c_str());
         n->out_own_ip->value(it->second.ip.c_str());
-        n->out_own_mask->value(it->second.mask.c_str());
+        n->out_own_mask->value((it->second.mask + "/" + 
+            std::to_string(IP::mask_prefix(it->second.mask))).c_str());
         std::string net = IP::ipv4_net(it->second.ip, it->second.mask);
         n->out_net->value(net.c_str());
         n->first_ip->value(IP::first_ip(net).c_str());
@@ -253,29 +252,32 @@ void clbk_full_scan(Fl_Widget *w, void *data)
             n->schedule->manager.SetInterface(n->choice_interface->text());
             std::string first_ip_string = n->first_ip->value();
             std::string last_ip_string = n->last_ip->value();
+            std::string mask_string = n->out_own_mask->value();
+            mask_string = mask_string.substr(0, mask_string.find("/"));
             if(IP::is_valid_ip_string(first_ip_string) 
             && IP::is_valid_ip_string(last_ip_string) 
             && IP::check_ip_range(n->out_net->value(), 
-            n->out_own_mask->value(), first_ip_string, last_ip_string)){
+            mask_string, first_ip_string, last_ip_string)){
                 IEvent* updater = GuiUpdater::Make(*n);
                 if(updater != 0)
                     n->schedule->AddToSelector(updater);
                 n->schedule->manager.SetOwnNode(n->out_own_ip->value(), 
                     n->out_own_mac->value());
+                n->schedule->manager.SetNetParams(n->out_net->value(), 
+                    mask_string);
                 std::vector<std::string> ips_to_scan= 
                     IP::all_ipv4_from_range(first_ip_string, last_ip_string);
                 n->schedule->manager.SetIpsToScan(ips_to_scan);
                 n->schedule->AddOrdinaryTask(new UsrPinger(*n->schedule, 
                     new PingerStatistic(n->progress)));
-                n->schedule->AddOrdinaryTask(new Arper(*n->schedule));
                 n->schedule->AddOrdinaryTask(new FindGate(*n->schedule));
-                n->schedule->AddOrdinaryTask(new FindRouters(*n->schedule));
+                n->schedule->AddOrdinaryTask(new Arper(*n->schedule));
                 n->schedule->WakeUp();
                 n->btn_active_mode->activate();
             }else{
                 n->first_ip->value(IP::first_ip(n->out_net->value()).c_str());
                 n->last_ip->value(IP::last_ip(n->out_net->value(), 
-                    n->out_own_mask->value()).c_str());
+                    mask_string).c_str());
                 fl_alert("Wrong ip range!");
             }
         } else {

@@ -99,6 +99,7 @@ UsrPinger::UsrPinger(Scheduler& m, Statistic* stat)
     send_in_time = ips.size() / 32 + 1;
     if(send_in_time > 0xFF)
         send_in_time = 0xFF;
+    rare_update = ips.size() > 0x4000;
 }
 
 bool UsrPinger::Execute()
@@ -114,7 +115,13 @@ bool UsrPinger::Execute()
         for(int i = 0; ip_pos < ips.size() && i < send_in_time; ip_pos++, i++){
             is_send = SendOneEcho();
         }
-        statistic->RecordStatistic(this);
+        if(rare_update){
+            if(ip_pos & 0x800){ 
+                statistic->RecordStatistic(this);
+            }
+        } else 
+            statistic->RecordStatistic(this);
+
         if(!is_send){
             result = UpdateDevices();
         }
@@ -146,8 +153,8 @@ bool AvailabilityPinger::UpdateDevices()
             NetNode*temp = master.manager.GetNodeByIp(ip);
             if(temp){ 
                 temp->is_active = false;
-                errors::Msg("ALARM: %s(%s) is currently unavailable", 
-                    temp->ipv4_address.c_str(), temp->vendor.c_str());
+                errors::Msg("ALARM: %s(%s, %s) is currently unavailable", 
+                    temp->ipv4_address.c_str(), temp->name.c_str(), temp->vendor.c_str());
             }
        } 
     }

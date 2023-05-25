@@ -27,6 +27,8 @@ namespace IP{
     std::string first_ip(const std::string& net);
     bool check_ip_range(const std::string& net, const std::string& mask, const std::string& first,
         const std::string& last);
+    bool is_ip_in_net(const std::string& net, const std::string& mask, 
+        const std::string& ip);
     bool is_valid_ip_string(const std::string& ip_string);
 };
 #endif
